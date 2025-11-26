@@ -5,8 +5,90 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CortexView"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="CortexView Overlay Assistant"
+        Height="450"
+        Width="800"
+        Topmost="True"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Gray"
+        WindowStartupLocation="Manual"
+        Opacity="0.8"
+        ResizeMode="CanResize">
+        <Grid>
+                <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- For Slider and other UI -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- For Settings -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- For TextBlock -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- For TextBlock -->
+                </Grid.RowDefinitions>
+                <Slider Name="OpacitySlider"
+                        Minimum="0.2"
+                        Maximum="1"
+                        Value="0.8"
+                        TickFrequency="0.1"
+                        Margin="20"/>
 
-    </Grid>
+                <DockPanel HorizontalAlignment="Left"
+                           VerticalAlignment="Top"
+                           LastChildFill="True"
+                           Margin="50 50 0 0">
+                        <ComboBox Name="ScreenSelector"
+                                  Margin="20,60,0,0"
+                                  HorizontalAlignment="Left"
+                                  VerticalAlignment="Top"
+                                  Width="200"/>
+                        <Button Content="Settings"
+                                Margin="20,60,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Click="SettingsButton_Click"/>
+                        <Button Content="Capture Screenshot"
+                                Margin="20,60,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Click="CaptureScreenshot_Click"/>
+                        <CheckBox Name="StoreOnDiskCheckbox"
+                                  Content="Save screenshots to disk"
+                                  Margin="20,60,0,0"
+                                  HorizontalAlignment="Left"
+                                  VerticalAlignment="Top"
+                                  IsChecked="True"/>
+                </DockPanel>
+                <DockPanel HorizontalAlignment="Right"
+                           VerticalAlignment="Top"
+                           LastChildFill="True"
+                           Margin="50 50 0 0">
+                        <Button Content="Min"
+                                Click="Minimize_Click"
+                                Width="50"
+                                Height="25"
+                                Margin="2"/>
+                        <Button Content="Max"
+                                Click="Maximize_Click"
+                                Width="50"
+                                Height="25"
+                                Margin="2"/>
+                        <Button Content="Close"
+                                Click="Close_Click"
+                                Width="50"
+                                Height="25"
+                                Margin="2"/>
+                </DockPanel>
+                <StackPanel Orientation="Vertical"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Margin="10,100,0,0">
+                        <TextBlock Name="InfoText"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Top"
+                                   FontSize="14"
+                                   Margin="10,50,0,0"
+                                   TextWrapping="Wrap"/>
+                </StackPanel>
+        </Grid>
 </Window>
