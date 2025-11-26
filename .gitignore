@@ -4,10 +4,11 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
 #Exclude Documentation Strategy docs
-docs/Milestone_1_implementation_plan.md
+docs/Milestone_*_implementation_plan.md
 docs/SpectraAssist-strategy_v1.md
 docs/SpectraAssist-milestones.md
 
+chats/
 # User-specific files
 *.rsuser
 *.suo
