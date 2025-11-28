@@ -3,7 +3,13 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows;          // for WPF types like Window, RoutedEventArgs
 using System.Windows.Forms;    // for Screen, etc.
-
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Windows.Threading;
+using System.Security.Cryptography;
+using System.IO;
+using System.Windows.Controls;
 
 
 namespace CortexView;
@@ -13,24 +19,161 @@ namespace CortexView;
 /// </summary>
 public partial class MainWindow : Window
 {
+
+    private const int GWL_EXSTYLE = -20;
+    private const int WS_EX_TOOLWINDOW = 0x00000080;
+    private const int WS_EX_APPWINDOW = 0x00040000;
+    private readonly DispatcherTimer _captureTimer = new DispatcherTimer();
+    private byte[]? _lastImageHash;
+    private DateTime _lastCaptureTimeUtc;
+    private enum ExclusionMode
+    {
+        DynamicDetection,
+        StaticMask,
+        ConfigurableExclusion
+    }
+
+    private ExclusionMode _currentExclusionMode = ExclusionMode.DynamicDetection;
     public MainWindow()
     {
         InitializeComponent();
+        StatusTextBlock.Text =
+            "Tip: For best results, keep CortexView outside the tracked app window so it is not included in captures.";
+
+        _currentExclusionMode = ExclusionMode.DynamicDetection;
+
+        _captureTimer.Tick += (s, e) =>
+        {
+            try
+            {
+                CaptureAndStoreScreenshot();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Error during periodic capture: {ex.Message}");
+                StatusTextBlock.Text = "Error during periodic capture. See log for details.";
+                _captureTimer.Stop();
+                MonitorToggleButton.IsChecked = false;
+            }
+        };
+
+        // Initialize interval from slider (seconds to TimeSpan)
+        _captureTimer.Interval = TimeSpan.FromSeconds(CaptureIntervalSlider.Value);
+
+
         this.Loaded += (s, e) => InitialWindowPosition();
 
-
-        this.SizeChanged += (s, e) => UpdateInfoDisplay();
-        this.LocationChanged += (s, e) => UpdateInfoDisplay();
+        //this.SizeChanged += (s, e) => UpdateInfoDisplay();
+        //this.LocationChanged += (s, e) => UpdateInfoDisplay();
         OpacitySlider.ValueChanged += OpacitySlider_ValueChanged;
-        foreach (var screen in Screen.AllScreens)
+       
+        var windows = GetTopLevelWindows();
+        WindowSelector.ItemsSource = windows;
+        if (windows.Count > 0)
         {
-            ScreenSelector.Items.Add(screen.DeviceName);
+            WindowSelector.SelectedIndex = 0;
         }
-        if (ScreenSelector.Items.Count > 0)
-            ScreenSelector.SelectedIndex = 0;
     }
 
-    private void InitialWindowPosition()
+    private class TopLevelWindowInfo
+    {
+        public IntPtr Hwnd { get; set; }
+        public string Title { get; set; } = string.Empty;
+
+        public override string ToString() => Title;
+    }
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
+
+    private static bool IsProbablyAppWindow(IntPtr hWnd, string title)
+    {
+        // Basic title filter: ignore very short or generic titles
+        if (string.IsNullOrWhiteSpace(title) || title.Length < 2)
+            return false;
+
+        // Get extended window styles
+        IntPtr exStylePtr = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+        long exStyle = exStylePtr.ToInt64();
+
+        // Exclude obvious tool windows; prefer windows marked as app windows
+        bool isToolWindow = (exStyle & WS_EX_TOOLWINDOW) == WS_EX_TOOLWINDOW;
+        bool isAppWindow = (exStyle & WS_EX_APPWINDOW) == WS_EX_APPWINDOW;
+
+        if (isToolWindow && !isAppWindow)
+            return false;
+
+        return true;
+    }
+
+    private static List<TopLevelWindowInfo> GetTopLevelWindows()
+    {
+        var windows = new List<TopLevelWindowInfo>();
+        IntPtr shellWindow = GetShellWindow();
+
+        EnumWindows((hWnd, lParam) =>
+        {
+            if (hWnd == shellWindow)
+                return true;
+
+            if (!IsWindowVisible(hWnd))
+                return true;
+
+            int length = GetWindowTextLength(hWnd);
+            if (length == 0)
+                return true;
+
+            var builder = new StringBuilder(length + 1);
+            GetWindowText(hWnd, builder, builder.Capacity);
+            string title = builder.ToString();
+
+            if (string.IsNullOrWhiteSpace(title))
+                return true;
+
+            if (!IsProbablyAppWindow(hWnd, title))
+                return true;
+
+            windows.Add(new TopLevelWindowInfo
+            {
+                Hwnd = hWnd,
+                Title = title
+            });
+
+            return true;
+        }, IntPtr.Zero);
+
+        return windows;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+     private void InitialWindowPosition()
     {
         var screen = System.Windows.Forms.Screen.FromHandle(
             new System.Windows.Interop.WindowInteropHelper(this).Handle);
@@ -58,29 +201,14 @@ public partial class MainWindow : Window
         this.Left = screenDipHalfWidth; // Position at right half
         this.Top = 0;                   // Top of screen (always 0 for typical screen)
 
-
-        // Optionally display info in a TextBlock for debugging
-        InfoText.Text = $"Screen width: {screenDipWidth}\n" +
-                        $"Screen height: {screenDipHeight}\n" +
-                        $"Screen width half: {screenDipHalfWidth}\n" +
-                        $"Window Width: {this.Width}\n" +
-                        $"Window Height: {this.Height}\n" +
-                        $"Window Left: {this.Left}\n" +
-                        $"Window Top: {this.Top}";
-    }
-
+    } 
 
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         this.Opacity = e.NewValue;
     }
 
-    private void SettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        System.Windows.MessageBox.Show("Settings dialog will be implemented here.");
-    }
-
-    private void CaptureScreenshot_Click(object sender, RoutedEventArgs e)
+    private void CaptureNowButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -88,37 +216,65 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Logger.Log($"Error capturing screenshot: {ex.Message}");
-            System.Windows.MessageBox.Show("An error occurred while capturing the screenshot.");
+            Logger.Log($"Error capturing window screenshot: {ex.Message}");
+            StatusTextBlock.Text = "Error capturing window. See log for details.";
         }
     }
 
-    private void CaptureAndStoreScreenshot()
+    private void MonitorToggleButton_Checked(object sender, RoutedEventArgs e)
     {
-        var selectedScreenIndex = ScreenSelector.SelectedIndex;
-        if (selectedScreenIndex < 0) return;
+        MonitorToggleButton.Content = "Stop Monitoring";
+        _captureTimer.Start();
+        StatusTextBlock.Text = "Monitoring started.";
+    }
 
-        var screen = Screen.AllScreens[selectedScreenIndex];
-        using (var bmp = new Bitmap(screen.Bounds.Width, screen.Bounds.Height))
+    private void MonitorToggleButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        MonitorToggleButton.Content = "Start Monitoring";
+        _captureTimer.Stop();
+        StatusTextBlock.Text = "Monitoring stopped.";
+    }
+
+    private void NextSuggestionButton_Click(object sender, RoutedEventArgs e)
+    {
+        StatusTextBlock.Text = "Next suggestion requested (Bedrock integration in later milestones).";
+    }
+
+    private void CaptureIntervalSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (CaptureIntervalLabel is not null)
         {
-            using (var g = Graphics.FromImage(bmp))
-            {
-                g.CopyFromScreen(screen.Bounds.Left, screen.Bounds.Top, 0, 0, bmp.Size);
-            }
-
-            if (StoreOnDiskCheckbox.IsChecked == true)
-            {
-                string filePath = $"screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-                bmp.Save(filePath, ImageFormat.Png);
-                System.Windows.MessageBox.Show($"Screenshot saved to {filePath}");
-            }
-            else
-            {
-                // Store bitmap in memory/transient list
-                // Example: InMemoryScreenshots.Add((Bitmap)bmp.Clone());
-                System.Windows.MessageBox.Show("Screenshot captured in memory (not saved to disk).");
-            }
+            CaptureIntervalLabel.Text = $"{(int)e.NewValue}s";
         }
+
+        if (_captureTimer != null)
+        {
+            _captureTimer.Interval = TimeSpan.FromSeconds(e.NewValue);
+        }
+    }
+
+    private void WindowSelector_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (WindowSelector.SelectedItem is TopLevelWindowInfo selected)
+        {
+            StatusTextBlock.Text =
+                $"Tracking window: \"{selected.Title}\". Ensure CortexView does not overlap this window to avoid self-capture.";
+        }
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e)
+    {
+        this.WindowState = WindowState.Minimized;
+    }
+
+    private void Maximize_Click(object sender, RoutedEventArgs e)
+    {
+        this.WindowState = (this.WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
+    }
+
+    private void Close_Click(object sender, RoutedEventArgs e)
+    {
+        this.Close();
     }
 
     protected override void OnMouseLeftButtonDown(System.Windows.Input.MouseButtonEventArgs e)
@@ -127,20 +283,119 @@ public partial class MainWindow : Window
         this.DragMove(); // Allows window drag
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e)
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        this.WindowState = WindowState.Minimized;
-    }
-    private void Maximize_Click(object sender, RoutedEventArgs e)
-    {
-        this.WindowState = (this.WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
-    }
-    private void Close_Click(object sender, RoutedEventArgs e)
-    {
-        this.Close();
+        System.Windows.MessageBox.Show("Settings dialog will be implemented here.");
     }
 
-    private void UpdateInfoDisplay()
+    private void CaptureAndStoreScreenshot()
+    {
+        string binDir = AppDomain.CurrentDomain.BaseDirectory;
+        string projectRoot = Directory.GetParent(binDir)!.Parent!.Parent!.Parent!.FullName; // from bin/Debug/netX
+
+       string outputDir = Path.Combine(projectRoot, "tests", "output");
+
+        
+        if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow)
+        {
+            StatusTextBlock.Text = "No window selected for capture.";
+            return;
+        }
+
+        if (!GetWindowRect(selectedWindow.Hwnd, out RECT rect))
+        {
+            StatusTextBlock.Text = "Could not read window bounds.";
+            return;
+        }
+
+        int width = rect.Right - rect.Left;
+        int height = rect.Bottom - rect.Top;
+
+        if (width <= 0 || height <= 0)
+        {
+            StatusTextBlock.Text = "Selected window has invalid size (maybe minimized?).";
+            return;
+        }
+
+        using (var bmp = new Bitmap(width, height))
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.CopyFromScreen(rect.Left, rect.Top, 0, 0, bmp.Size);
+
+            var currentHash = ComputeImageHash(bmp);
+
+            if (AreHashesEqual(_lastImageHash, currentHash))
+            {
+                StatusTextBlock.Text = $"No meaningful change detected for \"{selectedWindow.Title}\".";
+                return;
+            }
+
+            _lastImageHash = currentHash;
+            _lastCaptureTimeUtc = DateTime.UtcNow;
+
+
+            // TEMP: debug only – just confirm capture works for now
+            //string filePath = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+            string fileName = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+            string filePath = Path.Combine(outputDir, fileName);
+            bmp.Save(filePath, ImageFormat.Png);
+            StatusTextBlock.Text = $"Captured window: \"{selectedWindow.Title}\" to {filePath}";
+
+            _lastCaptureTimeUtc = DateTime.UtcNow;
+            // TODO (next step): compute hash of bmp and compare with _lastImageHash
+        }
+    }
+
+    private static byte[] ComputeImageHash(Bitmap bmp)
+    {
+        using var ms = new MemoryStream();
+        bmp.Save(ms, ImageFormat.Png);
+        ms.Position = 0;
+
+        using var sha1 = SHA1.Create(); // fast, not for security
+        return sha1.ComputeHash(ms);
+    }
+
+    private static bool AreHashesEqual(byte[]? a, byte[]? b)
+    {
+        if (a == null || b == null) return false;
+        if (a.Length != b.Length) return false;
+
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (a[i] != b[i]) return false;
+        }
+        return true;
+    }
+
+
+
+ private void ExclusionModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+{
+    if (ExclusionModeComboBox?.SelectedItem is not ComboBoxItem item)
+        return;
+
+    string mode = item.Content?.ToString() ?? string.Empty;
+
+    _currentExclusionMode = mode switch
+    {
+        "Dynamic Detection" => ExclusionMode.DynamicDetection,
+        "Static Mask" => ExclusionMode.StaticMask,
+        "Configurable Exclusion" => ExclusionMode.ConfigurableExclusion,
+        _ => ExclusionMode.DynamicDetection
+    };
+
+    if (StatusTextBlock != null)
+    {
+        StatusTextBlock.Text =
+            $"Exclusion mode: {_currentExclusionMode} (only DynamicDetection is active in v1.0.0).";
+    }
+}
+
+
+
+
+/*     private void UpdateInfoDisplay()
     {
         var screen = System.Windows.Forms.Screen.FromHandle(
             new System.Windows.Interop.WindowInteropHelper(this).Handle);
@@ -168,5 +423,5 @@ public partial class MainWindow : Window
 
         InfoText.Text = message;
     }
-
+ */
 }
