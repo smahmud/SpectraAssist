@@ -52,6 +52,8 @@ public partial class MainWindow : Window
 
     private readonly ChangeDetection _changeDetection = new ChangeDetection();
 
+    private double _changeSensitivityFraction = 0.10; // 10% default
+
     public MainWindow()
     {
         InitializeComponent();
@@ -77,6 +79,7 @@ public partial class MainWindow : Window
 
         // Initialize interval from slider (seconds to TimeSpan)
         _captureTimer.Interval = TimeSpan.FromSeconds(CaptureIntervalSlider.Value);
+        _changeSensitivityFraction = ChangeSensitivitySlider.Value / 100.0;
 
         this.Loaded += (s, e) => InitialWindowPosition();
 
@@ -406,5 +409,11 @@ public partial class MainWindow : Window
                 $"Exclusion mode: {_currentExclusionMode} (only DynamicDetection is active in v1.0.0).";
         }
     }
+
+    private void ChangeSensitivitySlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        _changeSensitivityFraction = ChangeSensitivitySlider.Value / 100.0;
+    }
+
 
 }

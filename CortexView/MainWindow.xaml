@@ -30,19 +30,47 @@
                                         <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="3*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <!-- Row 0: app selection + interval + exclusion mode -->
-                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="4">
+                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
                                         <TextBlock Text="App window:" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                         <ComboBox x:Name="WindowSelector"
                                                         Width="220"
                                                         SelectionChanged="WindowSelector_SelectionChanged" />
                                 </StackPanel>
 
-                                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="4">
+                                  <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
+                                        <TextBlock Text="Opacity:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <Slider x:Name="OpacitySlider"
+                                                Minimum="0.2"
+                                                Maximum="1"
+                                                Value="0.8"
+                                                Width="120"
+                                                TickFrequency="0.1"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
+                                        <TextBlock Text="Change sensitivity (%):"
+                                                VerticalAlignment="Center"
+                                                Margin="10,0,0,0" />
+
+                                        <Slider x:Name="ChangeSensitivitySlider"
+                                                Minimum="1"
+                                                Maximum="50"
+                                                Value="10"
+                                                Width="120"
+                                                Margin="5,0,0,0"
+                                                VerticalAlignment="Center"
+                                                ValueChanged="ChangeSensitivitySlider_OnValueChanged" />
+                                 </StackPanel>
+
+                                <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
+
                                         <TextBlock Text="Interval (s):" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                         <Slider x:Name="CaptureIntervalSlider"
                                                 Minimum="1"
@@ -58,7 +86,7 @@
                                                 Margin="4,0,0,0"/>
                                 </StackPanel>
 
-                                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="4">
+                                <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Vertical" HorizontalAlignment="Right" Margin="4">
                                         <TextBlock Text="Exclusion:" VerticalAlignment="Center" Margin="0,0,4,0"/>                                        
                                         <ComboBox x:Name="ExclusionModeComboBox" Width="150" IsEnabled="False" SelectionChanged="ExclusionModeComboBox_SelectionChanged">
                                                 <ComboBoxItem Content="Dynamic Detection" IsSelected="True"/>
@@ -81,18 +109,8 @@
                                                 Checked="MonitorToggleButton_Checked"
                                                 Unchecked="MonitorToggleButton_Unchecked"/>
                                 </StackPanel>
-
-                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="4">
-                                        <TextBlock Text="Opacity:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <Slider x:Name="OpacitySlider"
-                                                Minimum="0.2"
-                                                Maximum="1"
-                                                Value="0.8"
-                                                Width="120"
-                                                TickFrequency="0.1"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="4">
+                        
+                                <StackPanel Grid.Row="1" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="4">
                                         <Button Content="Min" Width="40" Margin="2" Click="Minimize_Click"/>
                                         <Button Content="Max" Width="40" Margin="2" Click="Maximize_Click"/>
                                         <Button Content="Close" Width="50" Margin="2" Click="Close_Click"/>
