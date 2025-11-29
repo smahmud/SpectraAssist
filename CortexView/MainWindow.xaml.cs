@@ -21,18 +21,24 @@ public partial class MainWindow : Window
 {
 
     private const int GWL_EXSTYLE = -20;
+    
     private const int WS_EX_TOOLWINDOW = 0x00000080;
+    
     private const int WS_EX_APPWINDOW = 0x00040000;
+    
     private readonly DispatcherTimer _captureTimer = new DispatcherTimer();
-    private byte[]? _lastImageHash;
+
     private DateTime _lastCaptureTimeUtc;
+    
     private enum ExclusionMode
     {
         DynamicDetection,
         StaticMask,
         ConfigurableExclusion
     }
+    
     private ExclusionMode _currentExclusionMode = ExclusionMode.DynamicDetection;
+    
     private static readonly string[] PriorityWindowKeywords =
     {
         "Visual Studio Code",
@@ -43,6 +49,8 @@ public partial class MainWindow : Window
         "Word",
         "Excel"
     };
+
+    private readonly ChangeDetection _changeDetection = new ChangeDetection();
 
     public MainWindow()
     {
@@ -358,15 +366,13 @@ public partial class MainWindow : Window
         {
             g.CopyFromScreen(rect.Left, rect.Top, 0, 0, bmp.Size);
 
-            var currentHash = ComputeImageHash(bmp);
-
-            if (AreHashesEqual(_lastImageHash, currentHash))
+            bool hasMeaningfulChange = _changeDetection.HasMeaningfulChange(bmp);
+            if (!hasMeaningfulChange)
             {
                 StatusTextBlock.Text = $"No meaningful change detected for \"{selectedWindow.Title}\".";
                 return;
             }
-
-            _lastImageHash = currentHash;
+           
             _lastCaptureTimeUtc = DateTime.UtcNow;
 
             string fileName = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
@@ -377,28 +383,6 @@ public partial class MainWindow : Window
             _lastCaptureTimeUtc = DateTime.UtcNow;
             // TODO (next step): compute hash of bmp and compare with _lastImageHash
         }
-    }
-
-    private static byte[] ComputeImageHash(Bitmap bmp)
-    {
-        using var ms = new MemoryStream();
-        bmp.Save(ms, ImageFormat.Png);
-        ms.Position = 0;
-
-        using var sha1 = SHA1.Create(); // fast, not for security
-        return sha1.ComputeHash(ms);
-    }
-
-    private static bool AreHashesEqual(byte[]? a, byte[]? b)
-    {
-        if (a == null || b == null) return false;
-        if (a.Length != b.Length) return false;
-
-        for (int i = 0; i < a.Length; i++)
-        {
-            if (a[i] != b[i]) return false;
-        }
-        return true;
     }
 
     private void ExclusionModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
