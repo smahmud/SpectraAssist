@@ -7,6 +7,9 @@ namespace CortexView
     internal class ChangeDetection
     {
         private byte[]? _lastImageHash;
+        private byte[]? _lastDownsampled;
+        private int _downsampledWidth = 64;
+        private int _downsampledHeight = 36;
 
         public bool HasMeaningfulChange(Bitmap currentBitmap)
         {
@@ -45,6 +48,60 @@ namespace CortexView
             }
 
             return true;
+        }
+
+        public double ComputeChangedFraction(Bitmap currentBitmap)
+        {
+            if (currentBitmap == null) throw new ArgumentNullException(nameof(currentBitmap));
+
+            byte[] currentDownsampled = DownsampleToGrayscale(currentBitmap, _downsampledWidth, _downsampledHeight);
+
+            if (_lastDownsampled == null)
+            {
+                _lastDownsampled = currentDownsampled;
+                return 1.0; // treat first frame as 100% changed
+            }
+
+            int changed = 0;
+            int total = currentDownsampled.Length;
+
+            const int noiseThreshold = 10; // brightness difference 0–255
+
+            for (int i = 0; i < total; i++)
+            {
+                int diff = Math.Abs(currentDownsampled[i] - _lastDownsampled[i]);
+                if (diff > noiseThreshold)
+                    changed++;
+            }
+
+            _lastDownsampled = currentDownsampled;
+
+            return total == 0 ? 0.0 : (double)changed / total;
+        }
+
+        private static byte[] DownsampleToGrayscale(Bitmap source, int targetWidth, int targetHeight)
+        {
+            using var resized = new Bitmap(targetWidth, targetHeight);
+            using (var g = Graphics.FromImage(resized))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                g.DrawImage(source, 0, 0, targetWidth, targetHeight);
+            }
+
+            var pixels = new byte[targetWidth * targetHeight];
+            int idx = 0;
+
+            for (int y = 0; y < targetHeight; y++)
+            {
+                for (int x = 0; x < targetWidth; x++)
+                {
+                    var c = resized.GetPixel(x, y);
+                    byte gray = (byte)((c.R * 0.3) + (c.G * 0.59) + (c.B * 0.11));
+                    pixels[idx++] = gray;
+                }
+            }
+
+            return pixels;
         }
     }
 }
