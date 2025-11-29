@@ -32,8 +32,18 @@ public partial class MainWindow : Window
         StaticMask,
         ConfigurableExclusion
     }
-
     private ExclusionMode _currentExclusionMode = ExclusionMode.DynamicDetection;
+    private static readonly string[] PriorityWindowKeywords =
+    {
+        "Visual Studio Code",
+        "VS Code",
+        "Microsoft Edge",
+        "Google Chrome",
+        "Firefox",
+        "Word",
+        "Excel"
+    };
+
     public MainWindow()
     {
         InitializeComponent();
@@ -60,19 +70,40 @@ public partial class MainWindow : Window
         // Initialize interval from slider (seconds to TimeSpan)
         _captureTimer.Interval = TimeSpan.FromSeconds(CaptureIntervalSlider.Value);
 
-
         this.Loaded += (s, e) => InitialWindowPosition();
 
-        //this.SizeChanged += (s, e) => UpdateInfoDisplay();
-        //this.LocationChanged += (s, e) => UpdateInfoDisplay();
         OpacitySlider.ValueChanged += OpacitySlider_ValueChanged;
        
         var windows = GetTopLevelWindows();
+
+        // simple sort: priority windows first, then alphabetical
+        windows.Sort((a, b) =>
+        {
+            bool aIsPriority = IsPriorityWindow(a.Title);
+            bool bIsPriority = IsPriorityWindow(b.Title);
+
+            if (aIsPriority && !bIsPriority) return -1;
+            if (!aIsPriority && bIsPriority) return 1;
+
+            return string.Compare(a.Title, b.Title, StringComparison.CurrentCultureIgnoreCase);
+        });
+
         WindowSelector.ItemsSource = windows;
         if (windows.Count > 0)
         {
             WindowSelector.SelectedIndex = 0;
         }
+
+    }
+
+    private static bool IsPriorityWindow(string title)
+    {
+        foreach (var keyword in PriorityWindowKeywords)
+        {
+            if (title.IndexOf(keyword, StringComparison.CurrentCultureIgnoreCase) >= 0)
+                return true;
+        }
+        return false;
     }
 
     private class TopLevelWindowInfo
@@ -293,27 +324,32 @@ public partial class MainWindow : Window
         string binDir = AppDomain.CurrentDomain.BaseDirectory;
         string projectRoot = Directory.GetParent(binDir)!.Parent!.Parent!.Parent!.FullName; // from bin/Debug/netX
 
-       string outputDir = Path.Combine(projectRoot, "tests", "output");
-
+        string outputDir = Path.Combine(projectRoot, "tests", "output");
         
+        //When no window is selected
         if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow)
         {
-            StatusTextBlock.Text = "No window selected for capture.";
+            StatusTextBlock.Text = "No window selected for capture. Please choose an app window from the list.";
             return;
         }
-
+        // When GetWindowRect fails
         if (!GetWindowRect(selectedWindow.Hwnd, out RECT rect))
         {
-            StatusTextBlock.Text = "Could not read window bounds.";
+            StatusTextBlock.Text =
+                $"Could not capture \"{selectedWindow.Title}\". The window handle is invalid or no longer available.";
+            Logger.Log($"GetWindowRect failed for window: {selectedWindow.Title}");
             return;
         }
 
+        // When the window is minimized or has invalid size
         int width = rect.Right - rect.Left;
         int height = rect.Bottom - rect.Top;
 
         if (width <= 0 || height <= 0)
         {
-            StatusTextBlock.Text = "Selected window has invalid size (maybe minimized?).";
+            StatusTextBlock.Text =
+                $"Could not capture \"{selectedWindow.Title}\". Is the window minimized or off-screen?";
+            Logger.Log($"Invalid window size for capture: {selectedWindow.Title} ({width}x{height})");
             return;
         }
 
@@ -333,9 +369,6 @@ public partial class MainWindow : Window
             _lastImageHash = currentHash;
             _lastCaptureTimeUtc = DateTime.UtcNow;
 
-
-            // TEMP: debug only – just confirm capture works for now
-            //string filePath = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
             string fileName = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
             string filePath = Path.Combine(outputDir, fileName);
             bmp.Save(filePath, ImageFormat.Png);
@@ -368,60 +401,26 @@ public partial class MainWindow : Window
         return true;
     }
 
-
-
- private void ExclusionModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-{
-    if (ExclusionModeComboBox?.SelectedItem is not ComboBoxItem item)
-        return;
-
-    string mode = item.Content?.ToString() ?? string.Empty;
-
-    _currentExclusionMode = mode switch
+    private void ExclusionModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        "Dynamic Detection" => ExclusionMode.DynamicDetection,
-        "Static Mask" => ExclusionMode.StaticMask,
-        "Configurable Exclusion" => ExclusionMode.ConfigurableExclusion,
-        _ => ExclusionMode.DynamicDetection
-    };
+        if (ExclusionModeComboBox?.SelectedItem is not ComboBoxItem item)
+            return;
 
-    if (StatusTextBlock != null)
-    {
-        StatusTextBlock.Text =
-            $"Exclusion mode: {_currentExclusionMode} (only DynamicDetection is active in v1.0.0).";
+        string mode = item.Content?.ToString() ?? string.Empty;
+
+        _currentExclusionMode = mode switch
+        {
+            "Dynamic Detection" => ExclusionMode.DynamicDetection,
+            "Static Mask" => ExclusionMode.StaticMask,
+            "Configurable Exclusion" => ExclusionMode.ConfigurableExclusion,
+            _ => ExclusionMode.DynamicDetection
+        };
+
+        if (StatusTextBlock != null)
+        {
+            StatusTextBlock.Text =
+                $"Exclusion mode: {_currentExclusionMode} (only DynamicDetection is active in v1.0.0).";
+        }
     }
-}
 
-
-
-
-/*     private void UpdateInfoDisplay()
-    {
-        var screen = System.Windows.Forms.Screen.FromHandle(
-            new System.Windows.Interop.WindowInteropHelper(this).Handle);
-
-        double screenWidth = screen.Bounds.Width;
-        double screenHeight = screen.Bounds.Height;
-        double screenHalf = screenWidth / 2;
-
-        int left = (int)screenHalf; //screen.Bounds.Left;
-        int top = screen.Bounds.Top;
-        int right = screen.Bounds.Right;
-        int bottom = screen.Bounds.Bottom;
-
-        string message = $"Screen width: {screenWidth}\n" +
-                         $"Screen height: {screenHeight}\n" +
-                         $"Screen width half: {screenHalf}\n" +
-                         $"Screen Left: {left}\n" +
-                         $"Screen Top: {top}\n" +
-                         $"Screen Right: {right}\n" +
-                         $"Screen Bottom: {bottom}\n" +
-                         $"Window Width: {this.Width}\n" +
-                         $"Window Height: {this.Height}\n" +
-                         $"Window Left: {this.Left}\n" +
-                         $"Window Top: {this.Top}";
-
-        InfoText.Text = message;
-    }
- */
 }
