@@ -369,6 +369,8 @@ public partial class MainWindow : Window
         {
             g.CopyFromScreen(rect.Left, rect.Top, 0, 0, bmp.Size);
 
+            double changedFraction = _changeDetection.ComputeChangedFraction(bmp);        
+
             bool hasMeaningfulChange = _changeDetection.HasMeaningfulChange(bmp);
             if (!hasMeaningfulChange)
             {
@@ -381,10 +383,10 @@ public partial class MainWindow : Window
             string fileName = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
             string filePath = Path.Combine(outputDir, fileName);
             bmp.Save(filePath, ImageFormat.Png);
-            StatusTextBlock.Text = $"Captured window: \"{selectedWindow.Title}\" to {filePath}";
+            // Optionally show the percentage in the status text for now
+            StatusTextBlock.Text = $"Captured window: \"{selectedWindow.Title}\" to {filePath} (changed ~{changedFraction:P0}).";
 
             _lastCaptureTimeUtc = DateTime.UtcNow;
-            // TODO (next step): compute hash of bmp and compare with _lastImageHash
         }
     }
 
