@@ -441,25 +441,44 @@ public partial class MainWindow : Window
         _changeSensitivityFraction = ChangeSensitivitySlider.Value / 100.0;
     }
 
-    private async Task RunAnalysisIfNeededAsync(AnalysisTriggerReason reason, TopLevelWindowInfo selectedWindow, Bitmap latestBitmap, double changedFraction)
+    private async Task RunAnalysisIfNeededAsync(
+        AnalysisTriggerReason reason, 
+        TopLevelWindowInfo selectedWindow, 
+        Bitmap latestBitmap, 
+        double changedFraction)
     {
+        // Experimental OCR (may return null for now)
+        string? ocrText = _changeDetection.TryExtractOcrText(latestBitmap);
+
         // For Milestone 3, this method only calls the local stub.
         // Later milestones will add more branching here.
-        await RunLocalAnalysisStubAsync(reason, changedFraction, selectedWindow.Title);
+        await RunLocalAnalysisStubAsync(
+            reason, 
+            changedFraction, 
+            selectedWindow.Title,
+            ocrText);
     }
 
-    private Task RunLocalAnalysisStubAsync(AnalysisTriggerReason reason, double changedFraction, string windowTitle)
+    private Task RunLocalAnalysisStubAsync(
+        AnalysisTriggerReason reason,
+        double changedFraction,
+        string windowTitle,
+        string? ocrText)
     {
-        // Stub: just update AI context and log-style info for now.
         string reasonText = reason == AnalysisTriggerReason.ManualOverride
             ? "ManualOverride"
             : "AutoChangeDetected";
 
-        string message =
-            $"[Stub] Analysis triggered ({reasonText}) for \"{windowTitle}\" " +
-            $"with estimated change ~{changedFraction:P0} at {DateTime.Now:T}.";
+        var sb = new StringBuilder();
+        sb.AppendLine($"[Stub] Analysis triggered ({reasonText}) for \"{windowTitle}\"");
+        sb.AppendLine($"Estimated change: {changedFraction:P0}");
+        if (!string.IsNullOrWhiteSpace(ocrText))
+        {
+            sb.AppendLine("OCR snapshot (experimental):");
+            sb.AppendLine(ocrText);
+        }
 
-        AiContextTextBox.Text = message;
+        AiContextTextBox.Text = sb.ToString();
 
         return Task.CompletedTask;
     }

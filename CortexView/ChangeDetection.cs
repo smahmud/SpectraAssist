@@ -11,7 +11,7 @@ namespace CortexView
         MinorChangeBelowThreshold,
         SignificantChange
     }
-    
+
     internal class ChangeDetection
     {
         private byte[]? _lastImageHash;
@@ -124,7 +124,11 @@ namespace CortexView
             return ChangeDecision.SignificantChange;
         }
 
-
-
+        public string? TryExtractOcrText(Bitmap bitmap)
+        {
+            // Milestone 3 placeholder: return null or a simple marker.
+            // Later this will call a real OCR engine.
+            return null;
+        }
     }
 }
