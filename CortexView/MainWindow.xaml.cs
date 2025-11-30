@@ -464,4 +464,39 @@ public partial class MainWindow : Window
         return Task.CompletedTask;
     }
 
+    private void RequestNewInformationButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow)
+        {
+            StatusTextBlock.Text = "No window selected for manual analysis. Please choose an app window.";
+            return;
+        }
+
+        // Reuse the same capture path as auto, but always treat as manual override.
+        if (!GetWindowRect(selectedWindow.Hwnd, out RECT rect))
+        {
+            StatusTextBlock.Text = $"Could not capture \"{selectedWindow.Title}\" for manual analysis. Is it closed?";
+            return;
+        }
+
+        int width = rect.Right - rect.Left;
+        int height = rect.Bottom - rect.Top;
+        if (width <= 0 || height <= 0)
+        {
+            StatusTextBlock.Text = $"Could not capture \"{selectedWindow.Title}\" for manual analysis. Is it minimized or off-screen?";
+            return;
+        }
+
+        using var bmp = new Bitmap(width, height);
+        using var g = Graphics.FromImage(bmp);
+        g.CopyFromScreen(rect.Left, rect.Top, 0, 0, bmp.Size);
+
+        double changedFraction = _changeDetection.ComputeChangedFraction(bmp);
+
+        // Always run analysis stub, regardless of sensitivity or hash decision.
+        _ = RunAnalysisIfNeededAsync(AnalysisTriggerReason.ManualOverride, selectedWindow, (Bitmap)bmp.Clone(), changedFraction);
+
+        StatusTextBlock.Text = $"Manual analysis requested for \"{selectedWindow.Title}\" (estimated change ~{changedFraction:P0}).";
+    }
+
 }
