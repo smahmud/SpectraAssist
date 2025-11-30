@@ -1,10 +1,11 @@
 # Milestone 2 Status — CortexView Window Capture & Change Detection
-## Overview
+
+### Overview
 This document summarizes the completed work for Milestone 2 of the SpectraAssist/CortexView WPF application. The goal was to move from monitor-based capture to **app window–based capture** with interval control, fast change detection, and an updated overlay layout, as specified in the Milestone 2 implementation plan.
 
 ---
 
-## Implemented Features
+### Implemented Features
 
 - **Updated Overlay Layout:**
 
@@ -62,18 +63,19 @@ This document summarizes the completed work for Milestone 2 of the SpectraAssist
 
 ---
 
-## Build & Run Instructions
+### Build & Run Instructions
 
 1. **Clone the repo:**
-    `git clone https://github.com/smahmud/SpectraAssist.git`
-
+    ```bash
+    git clone https://github.com/smahmud/SpectraAssist.git
+    ```
 2. **Open the project in VS Code or Visual Studio.**
 
 3.  **Build and run the CortexView app:**
-
-    - `dotnet build CortexView/CortexView.csproj`
-
-    - `dotnet run --project CortexView/CortexView.csproj`
+    ```bash
+    dotnet build CortexView/CortexView.csproj
+    dotnet run --project CortexView/CortexView.csproj
+    ```
 
 4. **Use the overlay:**
 
@@ -87,7 +89,7 @@ This document summarizes the completed work for Milestone 2 of the SpectraAssist
 
 ---
 
-## Known Issues / Limitations
+### Known Issues / Limitations
 
 - The window list still includes some background/utility windows (e.g., Alienware tools, Windows Input Experience); they are ordered after priority apps but not fully blacklisted yet.
 
@@ -99,7 +101,7 @@ This document summarizes the completed work for Milestone 2 of the SpectraAssist
 
 ---
 
-## Acceptance Checklist
+### Acceptance Checklist
  - [X] Only visible/app windows are selectable; top-level windows are enumerated via Win32 with basic filtering.
 
  - [X] Window-based capture implemented; monitor/screen capture UI paths from Milestone 1 are not exposed for v1.0.0.
@@ -116,7 +118,8 @@ This document summarizes the completed work for Milestone 2 of the SpectraAssist
 
 ---
 
-## Next Steps
+###  Next Steps
+
 - Introduce JSON-based configuration for priority/blacklisted windows and, later, per-app exclusion settings.
 
 - Explore per-window capture using DWM/`PrintWindow` to avoid including the overlay when windows overlap.
