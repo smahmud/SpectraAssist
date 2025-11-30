@@ -4,6 +4,14 @@ using System.Security.Cryptography;
 
 namespace CortexView
 {
+
+    internal enum ChangeDecision
+    {
+        NoChange,
+        MinorChangeBelowThreshold,
+        SignificantChange
+    }
+    
     internal class ChangeDetection
     {
         private byte[]? _lastImageHash;
@@ -103,5 +111,20 @@ namespace CortexView
 
             return pixels;
         }
+
+        public ChangeDecision DecideChange(double changedFraction, double sensitivityThresholdFraction)
+        {
+            // First capture or no previous downsampled data already yields changedFraction = 1.0
+            if (changedFraction <= 0)
+                return ChangeDecision.NoChange;
+
+            if (changedFraction < sensitivityThresholdFraction)
+                return ChangeDecision.MinorChangeBelowThreshold;
+
+            return ChangeDecision.SignificantChange;
+        }
+
+
+
     }
 }

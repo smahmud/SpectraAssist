@@ -369,8 +369,10 @@ public partial class MainWindow : Window
         {
             g.CopyFromScreen(rect.Left, rect.Top, 0, 0, bmp.Size);
 
+            // 1) Pixel-based fraction (0.0–1.0)
             double changedFraction = _changeDetection.ComputeChangedFraction(bmp);        
 
+            // 2) Hash-based guard: if hash says “identical”, short-circuit
             bool hasMeaningfulChange = _changeDetection.HasMeaningfulChange(bmp);
             if (!hasMeaningfulChange)
             {
@@ -378,11 +380,22 @@ public partial class MainWindow : Window
                 return;
             }
            
+            // 3) Apply sensitivity threshold to pixel diff
+            var decision = _changeDetection.DecideChange(changedFraction, _changeSensitivityFraction);
+            if (decision == ChangeDecision.MinorChangeBelowThreshold)
+            {
+                StatusTextBlock.Text =
+                    $"Minor change (~{changedFraction:P0}) below {(_changeSensitivityFraction):P0} threshold – skipping analysis.";
+                return;
+            }
+
+            // Significant change → save screenshot as before
             _lastCaptureTimeUtc = DateTime.UtcNow;
 
             string fileName = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
             string filePath = Path.Combine(outputDir, fileName);
             bmp.Save(filePath, ImageFormat.Png);
+            
             // Optionally show the percentage in the status text for now
             StatusTextBlock.Text = $"Captured window: \"{selectedWindow.Title}\" to {filePath} (changed ~{changedFraction:P0}).";
 
