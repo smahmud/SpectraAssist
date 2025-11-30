@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using System.Security.Cryptography;
 using System.IO;
 using System.Windows.Controls;
+using System.Threading.Tasks;
 
 
 namespace CortexView;
@@ -53,6 +54,12 @@ public partial class MainWindow : Window
     private readonly ChangeDetection _changeDetection = new ChangeDetection();
 
     private double _changeSensitivityFraction = 0.10; // 10% default
+
+    private enum AnalysisTriggerReason
+    {
+        AutoChangeDetected,
+        ManualOverride
+    }
 
     public MainWindow()
     {
@@ -395,11 +402,15 @@ public partial class MainWindow : Window
             string fileName = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
             string filePath = Path.Combine(outputDir, fileName);
             bmp.Save(filePath, ImageFormat.Png);
-            
+
             // Optionally show the percentage in the status text for now
             StatusTextBlock.Text = $"Captured window: \"{selectedWindow.Title}\" to {filePath} (changed ~{changedFraction:P0}).";
 
             _lastCaptureTimeUtc = DateTime.UtcNow;
+
+            // NEW: trigger local analysis stub (auto reason)
+            _ = RunAnalysisIfNeededAsync(AnalysisTriggerReason.AutoChangeDetected, selectedWindow, (Bitmap)bmp.Clone(), changedFraction);
+
         }
     }
 
@@ -430,5 +441,27 @@ public partial class MainWindow : Window
         _changeSensitivityFraction = ChangeSensitivitySlider.Value / 100.0;
     }
 
+    private async Task RunAnalysisIfNeededAsync(AnalysisTriggerReason reason, TopLevelWindowInfo selectedWindow, Bitmap latestBitmap, double changedFraction)
+    {
+        // For Milestone 3, this method only calls the local stub.
+        // Later milestones will add more branching here.
+        await RunLocalAnalysisStubAsync(reason, changedFraction, selectedWindow.Title);
+    }
+
+    private Task RunLocalAnalysisStubAsync(AnalysisTriggerReason reason, double changedFraction, string windowTitle)
+    {
+        // Stub: just update AI context and log-style info for now.
+        string reasonText = reason == AnalysisTriggerReason.ManualOverride
+            ? "ManualOverride"
+            : "AutoChangeDetected";
+
+        string message =
+            $"[Stub] Analysis triggered ({reasonText}) for \"{windowTitle}\" " +
+            $"with estimated change ~{changedFraction:P0} at {DateTime.Now:T}.";
+
+        AiContextTextBox.Text = message;
+
+        return Task.CompletedTask;
+    }
 
 }
