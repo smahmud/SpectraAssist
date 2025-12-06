@@ -2,12 +2,10 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows;          // for WPF types like Window, RoutedEventArgs
-using System.Windows.Forms;    // for Screen, etc.
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Threading;
-using System.Security.Cryptography;
 using System.IO;
 using System.Windows.Controls;
 using System.Threading.Tasks;
@@ -222,7 +220,7 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
-     private void InitialWindowPosition()
+    private void InitialWindowPosition()
     {
         var screen = System.Windows.Forms.Screen.FromHandle(
             new System.Windows.Interop.WindowInteropHelper(this).Handle);
@@ -254,7 +252,13 @@ public partial class MainWindow : Window
 
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        this.Opacity = e.NewValue;
+        // Find the root Border element (the parent of RootLayoutGrid)
+        if (RootLayoutGrid.Parent is Border rootBorder)
+        {
+            // Simply set the Opacity property of the Border to the slider's new value (0.2 to 1.0).
+            // This is much cleaner and controls the transparency of the dark background tint.
+            rootBorder.Opacity = e.NewValue;
+        }
     }
 
     private void CaptureNowButton_Click(object sender, RoutedEventArgs e)
@@ -282,7 +286,7 @@ public partial class MainWindow : Window
         MonitorToggleButton.Content = "Start Monitoring";
         _captureTimer.Stop();
         StatusTextBlock.Text = "Monitoring stopped.";
-    }
+    } 
 
     private void NextSuggestionButton_Click(object sender, RoutedEventArgs e)
     {
@@ -291,14 +295,11 @@ public partial class MainWindow : Window
 
     private void CaptureIntervalSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (CaptureIntervalLabel is not null)
+        if (IntervalLabel != null && _captureTimer != null)
         {
-            CaptureIntervalLabel.Text = $"{(int)e.NewValue}s";
-        }
-
-        if (_captureTimer != null)
-        {
-            _captureTimer.Interval = TimeSpan.FromSeconds(e.NewValue);
+            int seconds = (int)CaptureIntervalSlider.Value;
+            IntervalLabel.Text = $"Capture Interval: {seconds}s";
+            _captureTimer.Interval = TimeSpan.FromSeconds(seconds);
         }
     }
 
@@ -311,24 +312,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e)
-    {
-        this.WindowState = WindowState.Minimized;
-    }
-
-    private void Maximize_Click(object sender, RoutedEventArgs e)
-    {
-        this.WindowState = (this.WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
-    }
-
-    private void Close_Click(object sender, RoutedEventArgs e)
-    {
-        this.Close();
-    }
-
     protected override void OnMouseLeftButtonDown(System.Windows.Input.MouseButtonEventArgs e)
     {
+        // Call the base method first.
         base.OnMouseLeftButtonDown(e);
+
+        // Check if the window is currently being dragged from the system, 
+        // and if not, only call DragMove() if the mouse button state is Pressed.
+        // The standard check for maximizing on double-click is omitted here for simplicity.
+
+        // Initiates the drag operation.
         this.DragMove(); // Allows window drag
     }
 
@@ -518,24 +511,23 @@ public partial class MainWindow : Window
         StatusTextBlock.Text = $"Manual analysis requested for \"{selectedWindow.Title}\" (estimated change ~{changedFraction:P0}).";
     }
 
-    /// <summary>
-    /// Allows the borderless window to be dragged by clicking and holding the mouse button.
-    /// This fulfills a core M1/M4 requirement.
-    /// </summary>
-    private void Window_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void PinToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
+        Topmost = PinToggleButton.IsChecked == true;
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Explicitly specifies System.Windows.Application (the WPF version)
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    private void ChangeSensitivitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (SensitivityLabel != null)
         {
-            // Check if the user is attempting to resize, if not, drag the window.
-            if (ResizeMode == ResizeMode.CanResize || ResizeMode == ResizeMode.CanResizeWithGrip)
-            {
-                // Do not drag if the mouse is near the border (WPF handles resizing automatically)
-                // A perfect implementation is complex, but for a simple drag, we assume 
-                // the user clicks away from the resize handle.
-            }
-            
-            // This command is the standard way to initiate a drag operation in a borderless WPF window
-            DragMove();
+            int percent = (int)ChangeSensitivitySlider.Value;
+            SensitivityLabel.Text = $"Change Sensitivity: {percent}%";
         }
     }
 
