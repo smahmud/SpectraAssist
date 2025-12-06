@@ -11,6 +11,11 @@
    Background="Transparent"
    WindowStartupLocation="Manual"
    ResizeMode="CanResize">
+   <Window.InputBindings>
+      <KeyBinding Command="{x:Static local:MainWindow.RequestNewInfoCmd}" Key="R" Modifiers="Control+Shift"/>    
+      <KeyBinding Command="{x:Static local:MainWindow.NextSuggestionCmd}" Key="N" Modifiers="Control+Shift"/>    
+      <KeyBinding Command="{x:Static local:MainWindow.ToggleCollapseCmd}" Key="O" Modifiers="Control+Shift"/>
+   </Window.InputBindings>
    <Border Background="#FF202020" CornerRadius="4" BorderBrush="#FF444444" BorderThickness="1">
       <Grid x:Name="RootLayoutGrid">
          <Grid.RowDefinitions>
@@ -222,13 +227,21 @@
                </StackPanel>
 
                <!-- Row # 1 Status / gentle messages -->
-               <TextBlock x:Name="StatusTextBlock"
-                  Grid.Row="1"
-                  Text="Status: Idle"
-                  Foreground="#FFBBBBBB" 
-                  FontSize="10" 
-                  Margin="0,5,0,0"
-                  HorizontalAlignment="Right"/>
+               <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
+                  
+                  <Ellipse x:Name="StatusIndicatorEllipse"
+                           Width="8" 
+                           Height="8" 
+                           Fill="LimeGreen" 
+                           Margin="0,0,6,0" 
+                           VerticalAlignment="Center"/>
+
+                  <TextBlock x:Name="StatusTextBlock"
+                              Text="Status: Idle"
+                              Foreground="#FFBBBBBB" 
+                              FontSize="10" 
+                              VerticalAlignment="Center"/>
+               </StackPanel>
 
             </Grid>
          </Border>               

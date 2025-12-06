@@ -59,11 +59,29 @@ public partial class MainWindow : Window
         ManualOverride
     }
 
+    // M4: Custom Commands for Shortcuts
+    public static readonly System.Windows.Input.RoutedCommand RequestNewInfoCmd = new System.Windows.Input.RoutedCommand();
+    public static readonly System.Windows.Input.RoutedCommand NextSuggestionCmd = new System.Windows.Input.RoutedCommand();
+    public static readonly System.Windows.Input.RoutedCommand ToggleCollapseCmd = new System.Windows.Input.RoutedCommand();
+
+// M4: Enum for Status State
+    private enum AnalysisStatus
+    {
+        Idle,
+        Analyzing,
+        SignificantChange,
+        MinorChange,
+        Error
+    }
+
     public MainWindow()
     {
         InitializeComponent();
-        StatusTextBlock.Text =
-            "Tip: For best results, keep CortexView outside the tracked app window so it is not included in captures.";
+    // M4: Register Command Bindings for Shortcuts
+        CommandBindings.Add(new System.Windows.Input.CommandBinding(RequestNewInfoCmd, Execute_RequestNewInfo));
+        CommandBindings.Add(new System.Windows.Input.CommandBinding(NextSuggestionCmd, Execute_NextSuggestion));
+        CommandBindings.Add(new System.Windows.Input.CommandBinding(ToggleCollapseCmd, Execute_ToggleCollapse));
+        UpdateStatusBar(AnalysisStatus.Idle, "Tip: For best results, keep CortexView outside the tracked app window so it is not included in captures."); 
 
         _currentExclusionMode = ExclusionMode.DynamicDetection;
 
@@ -76,7 +94,7 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 Logger.Log($"Error during periodic capture: {ex.Message}");
-                StatusTextBlock.Text = "Error during periodic capture. See log for details.";
+                UpdateStatusBar(AnalysisStatus.Error, "Error during periodic capture. See log for details.");
                 _captureTimer.Stop();
                 MonitorToggleButton.IsChecked = false;
             }
@@ -270,7 +288,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Logger.Log($"Error capturing window screenshot: {ex.Message}");
-            StatusTextBlock.Text = "Error capturing window. See log for details.";
+            UpdateStatusBar(AnalysisStatus.Error, "Error capturing window. See log for details.");
         }
     }
 
@@ -278,19 +296,20 @@ public partial class MainWindow : Window
     {
         MonitorToggleButton.Content = "Stop Monitoring";
         _captureTimer.Start();
-        StatusTextBlock.Text = "Monitoring started.";
+        // Green dot indicates system is active/ready
+        UpdateStatusBar(AnalysisStatus.Idle, "Monitoring started.");
     }
 
     private void MonitorToggleButton_Unchecked(object sender, RoutedEventArgs e)
     {
         MonitorToggleButton.Content = "Start Monitoring";
         _captureTimer.Stop();
-        StatusTextBlock.Text = "Monitoring stopped.";
+        UpdateStatusBar(AnalysisStatus.Idle, "Monitoring stopped.");
     } 
 
-    private void NextSuggestionButton_Click(object sender, RoutedEventArgs e)
+    private void NextSuggestionButton_Click(object? sender, RoutedEventArgs? e)
     {
-        StatusTextBlock.Text = "Next suggestion requested (Bedrock integration in later milestones).";
+        UpdateStatusBar(AnalysisStatus.Idle, "Next suggestion requested (Bedrock integration in later milestones).");
     }
 
     private void CaptureIntervalSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -307,8 +326,8 @@ public partial class MainWindow : Window
     {
         if (WindowSelector.SelectedItem is TopLevelWindowInfo selected)
         {
-            StatusTextBlock.Text =
-                $"Tracking window: \"{selected.Title}\". Ensure CortexView does not overlap this window to avoid self-capture.";
+            // Green dot indicates successful selection and ready state
+            UpdateStatusBar(AnalysisStatus.Idle, $"Tracking window: \"{selected.Title}\". Ensure CortexView does not overlap this window to avoid self-capture.");
         }
     }
 
@@ -340,14 +359,13 @@ public partial class MainWindow : Window
         //When no window is selected
         if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow)
         {
-            StatusTextBlock.Text = "No window selected for capture. Please choose an app window from the list.";
+            UpdateStatusBar(AnalysisStatus.Idle, "No window selected for capture. Please choose an app window from the list.");
             return;
         }
         // When GetWindowRect fails
         if (!GetWindowRect(selectedWindow.Hwnd, out RECT rect))
         {
-            StatusTextBlock.Text =
-                $"Could not capture \"{selectedWindow.Title}\". The window handle is invalid or no longer available.";
+            UpdateStatusBar(AnalysisStatus.Error, $"Could not capture \"{selectedWindow.Title}\". The window handle is invalid or no longer available.");
             Logger.Log($"GetWindowRect failed for window: {selectedWindow.Title}");
             return;
         }
@@ -358,8 +376,7 @@ public partial class MainWindow : Window
 
         if (width <= 0 || height <= 0)
         {
-            StatusTextBlock.Text =
-                $"Could not capture \"{selectedWindow.Title}\". Is the window minimized or off-screen?";
+            UpdateStatusBar(AnalysisStatus.Error, $"Could not capture \"{selectedWindow.Title}\". Is the window minimized or off-screen?");
             Logger.Log($"Invalid window size for capture: {selectedWindow.Title} ({width}x{height})");
             return;
         }
@@ -376,7 +393,7 @@ public partial class MainWindow : Window
             bool hasMeaningfulChange = _changeDetection.HasMeaningfulChange(bmp);
             if (!hasMeaningfulChange)
             {
-                StatusTextBlock.Text = $"No meaningful change detected for \"{selectedWindow.Title}\".";
+                UpdateStatusBar(AnalysisStatus.Idle, $"No meaningful change detected for \"{selectedWindow.Title}\".");
                 return;
             }
            
@@ -384,8 +401,7 @@ public partial class MainWindow : Window
             var decision = _changeDetection.DecideChange(changedFraction, _changeSensitivityFraction);
             if (decision == ChangeDecision.MinorChangeBelowThreshold)
             {
-                StatusTextBlock.Text =
-                    $"Minor change (~{changedFraction:P0}) below {(_changeSensitivityFraction):P0} threshold – skipping analysis.";
+                UpdateStatusBar(AnalysisStatus.MinorChange, $"Minor change (~{changedFraction:P0}) below {(_changeSensitivityFraction):P0} threshold – skipping analysis.");
                 return;
             }
 
@@ -397,7 +413,7 @@ public partial class MainWindow : Window
             bmp.Save(filePath, ImageFormat.Png);
 
             // Optionally show the percentage in the status text for now
-            StatusTextBlock.Text = $"Captured window: \"{selectedWindow.Title}\" to {filePath} (changed ~{changedFraction:P0}).";
+            UpdateStatusBar(AnalysisStatus.SignificantChange, $"Captured window: \"{selectedWindow.Title}\" to {filePath} (changed ~{changedFraction:P0}).");
 
             _lastCaptureTimeUtc = DateTime.UtcNow;
 
@@ -424,8 +440,8 @@ public partial class MainWindow : Window
 
         if (StatusTextBlock != null)
         {
-            StatusTextBlock.Text =
-                $"Exclusion mode: {_currentExclusionMode} (only DynamicDetection is active in v1.0.0).";
+            // Green dot indicates successful selection and ready state
+            UpdateStatusBar(AnalysisStatus.Idle, $"Exclusion mode: {_currentExclusionMode} (only DynamicDetection is active in v1.0.0).");
         }
     }
 
@@ -476,18 +492,19 @@ public partial class MainWindow : Window
         return Task.CompletedTask;
     }
 
-    private void RequestNewInformationButton_OnClick(object sender, RoutedEventArgs e)
+    private void RequestNewInformationButton_OnClick(object? sender, RoutedEventArgs? e)
     {
         if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow)
         {
-            StatusTextBlock.Text = "No window selected for manual analysis. Please choose an app window.";
+            // Green dot indicates successful selection and ready state
+            UpdateStatusBar(AnalysisStatus.Error, "No window selected for manual analysis. Please choose an app window.");
             return;
         }
 
         // Reuse the same capture path as auto, but always treat as manual override.
         if (!GetWindowRect(selectedWindow.Hwnd, out RECT rect))
         {
-            StatusTextBlock.Text = $"Could not capture \"{selectedWindow.Title}\" for manual analysis. Is it closed?";
+            UpdateStatusBar(AnalysisStatus.Error, $"Could not capture \"{selectedWindow.Title}\" for manual analysis. Is it closed?");
             return;
         }
 
@@ -495,7 +512,7 @@ public partial class MainWindow : Window
         int height = rect.Bottom - rect.Top;
         if (width <= 0 || height <= 0)
         {
-            StatusTextBlock.Text = $"Could not capture \"{selectedWindow.Title}\" for manual analysis. Is it minimized or off-screen?";
+            UpdateStatusBar(AnalysisStatus.Error, $"Could not capture \"{selectedWindow.Title}\" for manual analysis. Is it minimized or off-screen?");
             return;
         }
 
@@ -508,7 +525,8 @@ public partial class MainWindow : Window
         // Always run analysis stub, regardless of sensitivity or hash decision.
         _ = RunAnalysisIfNeededAsync(AnalysisTriggerReason.ManualOverride, selectedWindow, (Bitmap)bmp.Clone(), changedFraction);
 
-        StatusTextBlock.Text = $"Manual analysis requested for \"{selectedWindow.Title}\" (estimated change ~{changedFraction:P0}).";
+        // Change: Use UpdateStatusBar with SignificantChange (Action occurred)
+        UpdateStatusBar(AnalysisStatus.SignificantChange, $"Manual analysis requested for \"{selectedWindow.Title}\" (estimated change ~{changedFraction:P0}).");
     }
 
     private void PinToggleButton_Click(object sender, RoutedEventArgs e)
@@ -531,4 +549,63 @@ public partial class MainWindow : Window
         }
     }
 
+    // M4: Command Handlers
+    private void Execute_RequestNewInfo(object? sender, System.Windows.Input.ExecutedRoutedEventArgs? e)
+    {
+        // Reuse existing logic. Pass null args since logic doesn't depend on them.
+        RequestNewInformationButton_OnClick(null, null);
+    }
+
+    private void Execute_NextSuggestion(object? sender, System.Windows.Input.ExecutedRoutedEventArgs? e)
+    {
+        // Reuse existing logic.
+        NextSuggestionButton_Click(null, null);
+    }
+
+    private void Execute_ToggleCollapse(object sender, System.Windows.Input.ExecutedRoutedEventArgs e)
+    {
+        // Toggle the Checked state. The XAML style triggers will handle the UI visibility.
+        if (CollapseToggleButton.IsChecked.HasValue)
+        {
+            CollapseToggleButton.IsChecked = !CollapseToggleButton.IsChecked.Value;
+        }
+    }
+
+    // M4: Central helper to update status text and indicator color
+    private void UpdateStatusBar(AnalysisStatus status, string message)
+    {
+        // Update Text
+        if (StatusTextBlock != null)
+        {
+            StatusTextBlock.Text = message;
+        }
+
+        // Update Dot Color
+        if (StatusIndicatorEllipse != null)
+        {
+            System.Windows.Media.SolidColorBrush newBrush;
+            switch (status)
+            {
+                case AnalysisStatus.Idle:
+                    newBrush = System.Windows.Media.Brushes.LimeGreen; // Ready
+                    break;
+                case AnalysisStatus.Analyzing:
+                    newBrush = System.Windows.Media.Brushes.Gold; // Busy/Processing
+                    break;
+                case AnalysisStatus.SignificantChange:
+                    newBrush = System.Windows.Media.Brushes.OrangeRed; // Action occurred
+                    break;
+                case AnalysisStatus.MinorChange:
+                    newBrush = System.Windows.Media.Brushes.DeepSkyBlue; // Ignored change
+                    break;
+                case AnalysisStatus.Error:
+                    newBrush = System.Windows.Media.Brushes.Red; // Error
+                    break;
+                default:
+                    newBrush = System.Windows.Media.Brushes.Gray;
+                    break;
+            }
+            StatusIndicatorEllipse.Fill = newBrush;
+        }
+    }
 }
