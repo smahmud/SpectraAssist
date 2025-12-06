@@ -228,8 +228,8 @@ public partial class MainWindow : Window
             new System.Windows.Interop.WindowInteropHelper(this).Handle);
 
         // Physical pixel dimensions
-        double screenPixelWidth = screen.Bounds.Width;
-        double screenPixelHeight = screen.Bounds.Height;
+        double screenPixelWidth = screen.Bounds.Width - 200;
+        double screenPixelHeight = screen.Bounds.Height - 200;
 
         // Convert pixels to WPF DIPs using current DPI scaling
         var source = PresentationSource.FromVisual(this);
@@ -478,7 +478,7 @@ public partial class MainWindow : Window
             sb.AppendLine(ocrText);
         }
 
-        AiContextTextBox.Text = sb.ToString();
+        //AiContextTextBox.Text = sb.ToString();
 
         return Task.CompletedTask;
     }
@@ -516,6 +516,27 @@ public partial class MainWindow : Window
         _ = RunAnalysisIfNeededAsync(AnalysisTriggerReason.ManualOverride, selectedWindow, (Bitmap)bmp.Clone(), changedFraction);
 
         StatusTextBlock.Text = $"Manual analysis requested for \"{selectedWindow.Title}\" (estimated change ~{changedFraction:P0}).";
+    }
+
+    /// <summary>
+    /// Allows the borderless window to be dragged by clicking and holding the mouse button.
+    /// This fulfills a core M1/M4 requirement.
+    /// </summary>
+    private void Window_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
+        {
+            // Check if the user is attempting to resize, if not, drag the window.
+            if (ResizeMode == ResizeMode.CanResize || ResizeMode == ResizeMode.CanResizeWithGrip)
+            {
+                // Do not drag if the mouse is near the border (WPF handles resizing automatically)
+                // A perfect implementation is complex, but for a simple drag, we assume 
+                // the user clicks away from the resize handle.
+            }
+            
+            // This command is the standard way to initiate a drag operation in a borderless WPF window
+            DragMove();
+        }
     }
 
 }

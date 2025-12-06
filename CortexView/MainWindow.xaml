@@ -1,171 +1,172 @@
 ﻿<Window x:Class="CortexView.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:CortexView"
-        mc:Ignorable="d"
-        Title="CortexView Overlay Assistant"
-        Height="450"
-        Width="800"
-        Topmost="True"
-        WindowStyle="None"
-        AllowsTransparency="True"
-        Background="Gray"
-        WindowStartupLocation="Manual"
-        Opacity="0.8"
-        ResizeMode="CanResize">
-        <Grid>
-                <Grid.RowDefinitions>
-                        <!-- Top 1/4: control panel -->
-                        <RowDefinition Height="*"/>
-                        <!-- Bottom 3/4: AI suggestion area -->
-                        <RowDefinition Height="3*"/>
-                </Grid.RowDefinitions>
-                 <!-- Top control panel -->
-                <Border Grid.Row="0" Background="#CC202020" Padding="8">
-                        <Grid>
-                                <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="3*"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <!-- Row 0: app selection + interval + exclusion mode -->
-                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
-                                        <TextBlock Text="App window:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <ComboBox x:Name="WindowSelector"
-                                                        Width="220"
-                                                        SelectionChanged="WindowSelector_SelectionChanged" />
-                                </StackPanel>
+   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+   xmlns:local="clr-namespace:CortexView"
+   Title="CortexView Overlay Assistant"
+   Height="400"
+   Width="300"
+   Topmost="True"
+   WindowStyle="None"
+   AllowsTransparency="True"
+   Background="Gray"
+   WindowStartupLocation="Manual"
+   ResizeMode="CanResize"
+   MouseDown="Window_MouseDown">
+   <Border Background="#CC202020" CornerRadius="4" BorderBrush="#FF444444" BorderThickness="1">
+      <Grid x:Name="RootLayoutGrid">
+         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+         </Grid.RowDefinitions>
+         <!-- Top control area -->
+         <Border Grid.Row="0" BorderBrush="#FF444444" BorderThickness="0,0,0,1" Padding="8">
+            <Grid>
+               <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+               </Grid.RowDefinitions>
+               <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+               </Grid.ColumnDefinitions>
+               <!-- Row 0: app selection + interval + exclusion mode -->
+               <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
+                  <TextBlock Text="App window:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                  <ComboBox x:Name="WindowSelector"
+                                 Width="220"
+                                 SelectionChanged="WindowSelector_SelectionChanged" />
+               </StackPanel>
 
-                                  <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
-                                        <TextBlock Text="Opacity:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <Slider x:Name="OpacitySlider"
-                                                Minimum="0.2"
-                                                Maximum="1"
-                                                Value="0.8"
-                                                Width="120"
-                                                TickFrequency="0.1"/>
-                                </StackPanel>
+               <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
+                  <TextBlock Text="Opacity:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                  <Slider x:Name="OpacitySlider"
+                           Minimum="0.2"
+                           Maximum="1"
+                           Value="0.8"
+                           Width="120"
+                           TickFrequency="0.1"/>
+               </StackPanel>
 
-                                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
-                                        <TextBlock Text="Change sensitivity (%):"
-                                                VerticalAlignment="Center"
-                                                Margin="10,0,0,0" />
+               <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
+                  <TextBlock Text="Change sensitivity (%):"
+                           VerticalAlignment="Center"
+                           Margin="10,0,0,0" />
 
-                                        <Slider x:Name="ChangeSensitivitySlider"
-                                                Minimum="1"
-                                                Maximum="50"
-                                                Value="10"
-                                                Width="120"
-                                                Margin="5,0,0,0"
-                                                VerticalAlignment="Center"
-                                                ValueChanged="ChangeSensitivitySlider_OnValueChanged" />
-                                 </StackPanel>
+                  <Slider x:Name="ChangeSensitivitySlider"
+                           Minimum="1"
+                           Maximum="50"
+                           Value="10"
+                           Width="120"
+                           Margin="5,0,0,0"
+                           VerticalAlignment="Center"
+                           ValueChanged="ChangeSensitivitySlider_OnValueChanged" />
+                  </StackPanel>
 
-                                <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
+               <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" HorizontalAlignment="Left" Margin="4">
 
-                                        <TextBlock Text="Interval (s):" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <Slider x:Name="CaptureIntervalSlider"
-                                                Minimum="1"
-                                                Maximum="10"
-                                                Value="3"
-                                                Width="120"
-                                                TickFrequency="1"
-                                                IsSnapToTickEnabled="True"
-                                                ValueChanged="CaptureIntervalSlider_ValueChanged"/>
-                                        <TextBlock x:Name="CaptureIntervalLabel"
-                                                Text="3s"
-                                                VerticalAlignment="Center"
-                                                Margin="4,0,0,0"/>
-                                </StackPanel>
+                  <TextBlock Text="Interval (s):" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                  <Slider x:Name="CaptureIntervalSlider"
+                           Minimum="1"
+                           Maximum="10"
+                           Value="3"
+                           Width="120"
+                           TickFrequency="1"
+                           IsSnapToTickEnabled="True"
+                           ValueChanged="CaptureIntervalSlider_ValueChanged"/>
+                  <TextBlock x:Name="CaptureIntervalLabel"
+                           Text="3s"
+                           VerticalAlignment="Center"
+                           Margin="4,0,0,0"/>
+               </StackPanel>            
 
-                                <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Vertical" HorizontalAlignment="Right" Margin="4">
-                                        <TextBlock Text="Exclusion:" VerticalAlignment="Center" Margin="0,0,4,0"/>                                        
-                                        <ComboBox x:Name="ExclusionModeComboBox" Width="150" IsEnabled="False" SelectionChanged="ExclusionModeComboBox_SelectionChanged">
-                                                <ComboBoxItem Content="Dynamic Detection" IsSelected="True"/>
-                                                <ComboBoxItem Content="Static Mask"/>
-                                                <ComboBoxItem Content="Configurable Exclusion"/>
-                                        </ComboBox>   
-                                                                     
-                                </StackPanel>
+               <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Vertical" HorizontalAlignment="Right" Margin="4">
+                  <TextBlock Text="Exclusion:" VerticalAlignment="Center" Margin="0,0,4,0"/>                                        
+                  <ComboBox x:Name="ExclusionModeComboBox" Width="150" IsEnabled="False" SelectionChanged="ExclusionModeComboBox_SelectionChanged">
+                           <ComboBoxItem Content="Dynamic Detection" IsSelected="True"/>
+                           <ComboBoxItem Content="Static Mask"/>
+                           <ComboBoxItem Content="Configurable Exclusion"/>
+                  </ComboBox>   
+                                                         
+                  </StackPanel>
 
-                                <!-- Row 1: capture + monitoring + opacity -->
-                                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="4">
-                                        <Button x:Name="CaptureNowButton"
-                                                Content="Capture Now"
-                                                Width="110"
-                                                Margin="0,0,4,0"
-                                                Click="CaptureNowButton_Click"/>
-                                        <ToggleButton x:Name="MonitorToggleButton"
-                                                Content="Start Monitoring"
-                                                Width="130"
-                                                Checked="MonitorToggleButton_Checked"
-                                                Unchecked="MonitorToggleButton_Unchecked"/>
-                                </StackPanel>
-                        
-                                <StackPanel Grid.Row="1" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="4">
-                                        <Button Content="Min" Width="40" Margin="2" Click="Minimize_Click"/>
-                                        <Button Content="Max" Width="40" Margin="2" Click="Maximize_Click"/>
-                                        <Button Content="Close" Width="50" Margin="2" Click="Close_Click"/>
-                                </StackPanel>
-                        </Grid>
-                </Border>
+               <!-- Row 1: capture + monitoring  -->                     
+               <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="4">
+                  <Button x:Name="CaptureNowButton"
+                           Content="Capture Now"
+                           Width="110"
+                           Margin="0,0,4,0"
+                           Click="CaptureNowButton_Click"/>
 
-                <!-- Bottom AI suggestion area -->
-                <Border Grid.Row="1" Background="#CC101010" Padding="8">
-                        <Grid>
-                                <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
+                  <ToggleButton x:Name="MonitorToggleButton"
+                           Content="Start Monitoring"
+                           Width="130"
+                           Checked="MonitorToggleButton_Checked"
+                           Unchecked="MonitorToggleButton_Unchecked"/>
 
-                                <!-- Status / gentle messages -->
-                                <TextBlock x:Name="StatusTextBlock"
-                                        Grid.Row="0"
-                                        Margin="0,0,0,4"
-                                        Foreground="White"
-                                        FontSize="12"
-                                        TextWrapping="Wrap"/>
+               </StackPanel>
+                     
+               <StackPanel Grid.Row="1" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="4">
+                        <Button Content="Min" Width="40" Margin="2" Click="Minimize_Click"/>
+                        <Button Content="Max" Width="40" Margin="2" Click="Maximize_Click"/>
+                        <Button Content="Close" Width="50" Margin="2" Click="Close_Click"/>
+               </StackPanel>
+            </Grid>
+         </Border>
 
-                                <!-- Scrollable AI context/help text -->
-                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                        <TextBox x:Name="AiContextTextBox"
-                                                IsReadOnly="True"
-                                                TextWrapping="Wrap"
-                                                VerticalScrollBarVisibility="Disabled"
-                                                BorderThickness="0"
-                                                Background="Transparent"
-                                                Foreground="White"
-                                                FontSize="14"/>
-                                </ScrollViewer>
+         <!-- Scrollable AI context/help text -->
+         <ScrollViewer Grid.Row="1" Padding="8" VerticalScrollBarVisibility="Auto">
+            <RichTextBox x:Name="AiContextTextBox"  
+               IsReadOnly="True"
+               BorderThickness="0"
+               Background="Transparent"
+               Foreground="White"
+               VerticalScrollBarVisibility="Disabled"
+               FontFamily="Segoe UI Semibold"
+               FontSize="14">
+               <FlowDocument>
+                  <Paragraph>
+                        <Run Text="Welcome to CortexView. Please select a window and click 'Request New Information' to begin analysis."/>
+                  </Paragraph>
+               </FlowDocument>
+            </RichTextBox>
+         </ScrollViewer>
+      
+         <Border Grid.Row="2" BorderBrush="#FF444444" BorderThickness="0,1,0,0" Padding="8">
+            <Grid>   
+               <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>                         
+                  <RowDefinition Height="Auto"/>
+               </Grid.RowDefinitions>
 
-                                <Button x:Name="RequestNewInformationButton"
-                                        Grid.Row="2"
-                                        Content="Request New Information"
-                                        Margin="0,10,0,0"
-                                        Height="36"
-                                        HorizontalAlignment="Stretch"
-                                        Click="RequestNewInformationButton_OnClick" />
+               <!-- Row # 0 RequestNewInformationButton and  / NextSuggestionButton buttons -->
+               <StackPanel Grid.Row="0" Orientation="Vertical">
 
-                                <!-- Large Next Suggestion button -->
-                                <Button x:Name="NextSuggestionButton"
-                                        Grid.Row="3"
-                                        Content="Next Suggestion"
-                                        Height="36"
-                                        HorizontalAlignment="Stretch"
-                                        Margin="0,6,0,0"
-                                        Click="NextSuggestionButton_Click"/>
-                        </Grid>
-                </Border>
-                
-        </Grid>
+                  <Button x:Name="RequestNewInformationButton"
+                     Content="Request New Information"
+                     Margin="0,0,0,5"
+                     Click="RequestNewInformationButton_OnClick" />
+
+                  <Button x:Name="NextSuggestionButton"
+                     Content="Next Suggestion"
+                     Click="NextSuggestionButton_Click"/>
+               </StackPanel>
+
+               <!-- Row # 1 Status / gentle messages -->
+               <TextBlock x:Name="StatusTextBlock"
+                  Grid.Row="1"
+                  Text="Status: Idle"
+                  Foreground="#FFBBBBBB" 
+                  FontSize="10" 
+                  Margin="0,5,0,0"
+                  HorizontalAlignment="Right"/>
+
+            </Grid>
+         </Border>
+               
+      </Grid>
+  </Border>
 </Window>
