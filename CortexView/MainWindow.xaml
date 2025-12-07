@@ -79,9 +79,9 @@
                                       ToolTip="Toggle Always On Top (Pinned)"
                                       IsChecked="True"
                                       Width="24"
-                                      Height="24"
-                                      Click="PinToggleButton_Click"
-                                      Margin="0,0,8,0"/>
+                                      Height="24"                                      
+                                      Margin="0,0,8,0"
+                                      Click="PinToggleButton_Click"/>
 
                         <TextBlock Grid.Column="2" 
                                    Text="Opacity:" 

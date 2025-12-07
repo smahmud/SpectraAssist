@@ -531,6 +531,8 @@ public partial class MainWindow : Window
 
     private void PinToggleButton_Click(object sender, RoutedEventArgs e)
     {
+        // If the button is Checked (True), make the window Topmost.
+        // If Unchecked (False) or null, make it normal.
         Topmost = PinToggleButton.IsChecked == true;
     }
 
