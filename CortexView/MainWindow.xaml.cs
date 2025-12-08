@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using CortexView.Services; // For IAiAnalysisService, MockAiService
 using CortexView.Models;   // For AnalysisRequest
 using System.Windows.Documents; // For FlowDocument manipulation
+using Ookii.Dialogs.Wpf; // For the folder picker
 
 namespace CortexView;
 
@@ -24,6 +25,10 @@ public partial class MainWindow : Window
     private AppConfig _appConfig;
     
     private readonly IAiAnalysisService _aiService;
+
+    private readonly IStorageService _storageService;
+
+    private readonly AuditService _auditService;
 
     private const int GWL_EXSTYLE = -20;
     
@@ -105,7 +110,10 @@ public partial class MainWindow : Window
 
         InitializeComponent();
 
-        // Initialize Service based on Config
+        // Initialize Services 
+        _storageService = new LocalStorageService(_appConfig);
+        _auditService = new AuditService(_appConfig);
+
         if (_appConfig.AiServiceConfig.Provider.Equals("AWS", StringComparison.OrdinalIgnoreCase))
         {
             _aiService = new AwsBedrockService(_appConfig);
@@ -114,6 +122,17 @@ public partial class MainWindow : Window
         {
             _aiService = new MockAiService();
         }
+
+        // Load Saved Settings into UI
+        StorageEnabledCheckBox.IsChecked = _appConfig.StorageConfig.Enabled;
+        StoragePathTextBox.Text = string.IsNullOrEmpty(_appConfig.StorageConfig.StoragePath) 
+            ? "Default (MyDocuments)" 
+            : _appConfig.StorageConfig.StoragePath;
+        RetentionSlider.Value = _appConfig.StorageConfig.RetentionDays;
+        RetentionValueLabel.Text = _appConfig.StorageConfig.RetentionDays.ToString();
+
+        // Trigger Cleanup on Startup
+        Task.Run(() => _storageService.CleanupOldFilesAsync());
 
         //Register Command Bindings for Shortcuts
         CommandBindings.Add(new System.Windows.Input.CommandBinding(RequestNewInfoCmd, Execute_RequestNewInfo));
@@ -127,7 +146,8 @@ public partial class MainWindow : Window
         {
             try
             {
-                CaptureAndStoreScreenshot();
+                // Auto mode: Respect thresholds
+                CaptureAndStoreScreenshot(AnalysisTriggerReason.AutoChangeDetected);
             }
             catch (Exception ex)
             {
@@ -333,7 +353,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            CaptureAndStoreScreenshot();
+            // Manual mode: Force analysis
+            CaptureAndStoreScreenshot(AnalysisTriggerReason.ManualOverride);
         }
         catch (Exception ex)
         {
@@ -345,6 +366,10 @@ public partial class MainWindow : Window
     private void MonitorToggleButton_Checked(object sender, RoutedEventArgs e)
     {
         MonitorToggleButton.Content = "Stop Monitoring";
+
+        // Disable manual capture to prevent conflicts
+        CaptureNowButton.IsEnabled = false;
+
         _captureTimer.Start();
         // Green dot indicates system is active/ready
         UpdateStatusBar(AnalysisStatus.Idle, "Monitoring started.");
@@ -353,6 +378,10 @@ public partial class MainWindow : Window
     private void MonitorToggleButton_Unchecked(object sender, RoutedEventArgs e)
     {
         MonitorToggleButton.Content = "Start Monitoring";
+
+        // Re-enable manual capture
+        CaptureNowButton.IsEnabled = true;
+        
         _captureTimer.Stop();
         UpdateStatusBar(AnalysisStatus.Idle, "Monitoring stopped.");
     } 
@@ -395,77 +424,61 @@ public partial class MainWindow : Window
         System.Windows.MessageBox.Show("Settings dialog will be implemented here.");
     }
 
-    private void CaptureAndStoreScreenshot()
+    private void CaptureAndStoreScreenshot(AnalysisTriggerReason reason)
     {
-        string binDir = AppDomain.CurrentDomain.BaseDirectory;
-        string projectRoot = Directory.GetParent(binDir)!.Parent!.Parent!.Parent!.FullName; // from bin/Debug/netX
-
-        string outputDir = Path.Combine(projectRoot, "tests", "output");
-        
-        // When no window is selected
+        // 1. Validation (No Window Selected)
         if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow)
         {
-            UpdateStatusBar(AnalysisStatus.Idle, "No window selected for capture. Please choose an app window from the list.");
+            UpdateStatusBar(AnalysisStatus.Idle, "No window selected for capture.");
             return;
         }
-        // When GetWindowRect fails
+
+        // 2. Validation (Window Handle)
         if (!GetWindowRect(selectedWindow.Hwnd, out RECT rect))
         {
-            UpdateStatusBar(AnalysisStatus.Error, $"Could not capture \"{selectedWindow.Title}\". The window handle is invalid or no longer available.");
-            Logger.Log($"GetWindowRect failed for window: {selectedWindow.Title}");
+            UpdateStatusBar(AnalysisStatus.Error, "Could not capture window (Invalid Handle).");
             return;
         }
 
-        // When the window is minimized or has invalid size
+        // 3. Validation (Size)
         int width = rect.Right - rect.Left;
         int height = rect.Bottom - rect.Top;
-
-        if (width <= 0 || height <= 0)
-        {
-            UpdateStatusBar(AnalysisStatus.Error, $"Could not capture \"{selectedWindow.Title}\". Is the window minimized or off-screen?");
-            Logger.Log($"Invalid window size for capture: {selectedWindow.Title} ({width}x{height})");
-            return;
-        }
+        if (width <= 0 || height <= 0) return;
 
         using (var bmp = new Bitmap(width, height))
         using (var g = Graphics.FromImage(bmp))
         {
             g.CopyFromScreen(rect.Left, rect.Top, 0, 0, bmp.Size);
 
-            // 1) Pixel-based fraction (0.0–1.0)
+            // A) Calculate Change
             double changedFraction = _changeDetection.ComputeChangedFraction(bmp);        
-
-            // 2) Hash-based guard: if hash says “identical”, short-circuit
             bool hasMeaningfulChange = _changeDetection.HasMeaningfulChange(bmp);
-            if (!hasMeaningfulChange)
+            
+            // B) LOGIC GATE: Only block if this is AUTO mode
+            if (reason == AnalysisTriggerReason.AutoChangeDetected)
             {
-                UpdateStatusBar(AnalysisStatus.Idle, $"No meaningful change detected for \"{selectedWindow.Title}\".");
-                return;
+                if (!hasMeaningfulChange)
+                {
+                    UpdateStatusBar(AnalysisStatus.Idle, $"No meaningful change detected for \"{selectedWindow.Title}\".");
+                    return;
+                }
+
+                var decision = _changeDetection.DecideChange(changedFraction, _changeSensitivityFraction);
+                if (decision == ChangeDecision.MinorChangeBelowThreshold)
+                {
+                    UpdateStatusBar(AnalysisStatus.MinorChange, $"Minor change (~{changedFraction:P0}) - skipping auto-analysis.");
+                    return;
+                }
             }
-           
-            // 3) Apply sensitivity threshold to pixel diff
-            var decision = _changeDetection.DecideChange(changedFraction, _changeSensitivityFraction);
-            if (decision == ChangeDecision.MinorChangeBelowThreshold)
-            {
-                UpdateStatusBar(AnalysisStatus.MinorChange, $"Minor change (~{changedFraction:P0}) below {(_changeSensitivityFraction):P0} threshold – skipping analysis.");
-                return;
-            }
 
-            // Significant change → save screenshot as before
+            // C) Execution (Manual always reaches here, Auto reaches here only if significant)
             _lastCaptureTimeUtc = DateTime.UtcNow;
+            
+            string triggerText = reason == AnalysisTriggerReason.ManualOverride ? "Manual Capture" : "Auto-Change";
+            UpdateStatusBar(AnalysisStatus.SignificantChange, $"{triggerText} (~{changedFraction:P0}). Triggering analysis...");
 
-            string fileName = $"window_capture_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-            string filePath = Path.Combine(outputDir, fileName);
-            bmp.Save(filePath, ImageFormat.Png);
-
-            // Optionally show the percentage in the status text for now
-            UpdateStatusBar(AnalysisStatus.SignificantChange, $"Captured window: \"{selectedWindow.Title}\" to {filePath} (changed ~{changedFraction:P0}).");
-
-            _lastCaptureTimeUtc = DateTime.UtcNow;
-
-            // trigger local analysis stub (auto reason)
-            _ = RunAnalysisIfNeededAsync(AnalysisTriggerReason.AutoChangeDetected, selectedWindow, (Bitmap)bmp.Clone(), changedFraction);
-
+            // Pass the specific reason so RunAnalysisIfNeededAsync knows what to do
+            _ = RunAnalysisIfNeededAsync(reason, selectedWindow, (Bitmap)bmp.Clone(), changedFraction);
         }
     }
 
@@ -525,7 +538,7 @@ public partial class MainWindow : Window
                 UserPrompt = "Analyze this interface." // The user's query (could be dynamic later)
             };
 
-            // NEW: Inject the selected Persona settings (Step 6.5)
+            // Inject the selected Persona settings
             // We use Dispatcher because this might run on a background thread depending on caller
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
@@ -552,6 +565,20 @@ public partial class MainWindow : Window
 
             if (response.IsSuccess)
             {
+                 // Save Screenshot
+                string personaName = AssistantModeComboBox.SelectedItem is Persona p ? p.Name : "Unknown";
+                string? savedPath = await _storageService.SaveScreenshotAsync(latestBitmap, personaName);
+
+                // Log Audit Entry
+                await _auditService.LogInteractionAsync(new AuditEntry
+                {
+                    Timestamp = DateTime.Now,
+                    Persona = personaName,
+                    ImagePath = savedPath ?? "Not Saved",
+                    TokenUsage = response.TokenUsage,
+                    RequestContext = selectedWindow.Title
+                });
+
                 UpdateStatusBar(AnalysisStatus.Idle, $"Analysis Complete. Used {response.TokenUsage} tokens.");
                 
                 // Clear and update the RichTextBox with the response
@@ -713,6 +740,75 @@ public partial class MainWindow : Window
                     break;
             }
             StatusIndicatorEllipse.Fill = newBrush;
+        }
+    }
+
+    // --- Storage & Privacy Event Handlers ---
+
+    private void StorageEnabledCheckBox_Checked(object sender, RoutedEventArgs e)
+    {
+        _appConfig.StorageConfig.Enabled = true;
+    }
+
+    private void StorageEnabledCheckBox_Unchecked(object sender, RoutedEventArgs e)
+    {
+        _appConfig.StorageConfig.Enabled = false;
+    }
+
+    private void BrowseStorageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new VistaFolderBrowserDialog
+        {
+            Description = "Select a folder to store screenshots and logs",
+            UseDescriptionForTitle = true
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            _appConfig.StorageConfig.StoragePath = dialog.SelectedPath;
+            StoragePathTextBox.Text = dialog.SelectedPath;
+        }
+    }
+
+    private void RetentionSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (RetentionValueLabel != null)
+        {
+            int days = (int)e.NewValue;
+            RetentionValueLabel.Text = days.ToString();
+            _appConfig.StorageConfig.RetentionDays = days;
+        }
+    }
+
+    private void OpenStorageButton_Click(object sender, RoutedEventArgs e)
+    {
+        // We use the service to get the path logic, but here we just need the string
+        string path = string.IsNullOrWhiteSpace(_appConfig.StorageConfig.StoragePath)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CortexView_Captures")
+            : _appConfig.StorageConfig.StoragePath;
+
+        if (Directory.Exists(path))
+        {
+            System.Diagnostics.Process.Start("explorer.exe", path);
+        }
+        else
+        {
+            UpdateStatusBar(AnalysisStatus.Error, "Storage folder does not exist yet.");
+        }
+    }
+
+    private async void PurgeDataButton_Click(object sender, RoutedEventArgs e)
+    {
+        var result = MessageBox.Show(
+            "Are you sure you want to DELETE ALL screenshots and logs?\nThis cannot be undone.", 
+            "Confirm Purge", 
+            MessageBoxButton.YesNo, 
+            MessageBoxImage.Warning);
+
+        if (result == MessageBoxResult.Yes)
+        {
+            await _storageService.PurgeAllAsync();
+            UpdateStatusBar(AnalysisStatus.SignificantChange, "All local data has been purged.");
         }
     }
 }
