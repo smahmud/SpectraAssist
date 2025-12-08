@@ -1,24 +1,48 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.5.2.0
+VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortexView", "CortexView\CortexView.csproj", "{F13BE455-B270-858D-993A-629850F70044}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortexView", "CortexView\CortexView.csproj", "{49AC21A0-7329-4A3B-91B3-23774B88E2D7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortexView.Tests", "CortexView.Tests\CortexView.Tests.csproj", "{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F13BE455-B270-858D-993A-629850F70044}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F13BE455-B270-858D-993A-629850F70044}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F13BE455-B270-858D-993A-629850F70044}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F13BE455-B270-858D-993A-629850F70044}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Debug|x64.Build.0 = Debug|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Debug|x86.Build.0 = Debug|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Release|x64.ActiveCfg = Release|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Release|x64.Build.0 = Release|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Release|x86.ActiveCfg = Release|Any CPU
+		{49AC21A0-7329-4A3B-91B3-23774B88E2D7}.Release|x86.Build.0 = Release|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Debug|x64.Build.0 = Debug|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Debug|x86.Build.0 = Debug|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Release|x64.ActiveCfg = Release|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Release|x64.Build.0 = Release|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Release|x86.ActiveCfg = Release|Any CPU
+		{C86F9C71-AC38-449A-8D77-CF0EC17DBFC5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {EB39B83F-6E5E-4F21-9821-7F3AE9D8D93D}
 	EndGlobalSection
 EndGlobal
