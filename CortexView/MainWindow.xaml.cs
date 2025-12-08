@@ -9,7 +9,7 @@ using System.Windows.Threading;
 using System.IO;
 using System.Windows.Controls;
 using System.Threading.Tasks;
-
+using Microsoft.Extensions.Configuration;
 
 namespace CortexView;
 
@@ -18,6 +18,7 @@ namespace CortexView;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private AppConfig _appConfig;
 
     private const int GWL_EXSTYLE = -20;
     
@@ -76,6 +77,29 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        try 
+            {
+                // FIX 1: Use AppDomain.CurrentDomain.BaseDirectory for reliable path resolution
+                var builder = new ConfigurationBuilder()
+                    .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+                IConfigurationRoot configuration = builder.Build();
+                
+                _appConfig = new AppConfig();
+                // Bind the "AiServiceConfig" section to the nested class inside AppConfig
+                // Note: Make sure your JSON keys match the class structure!
+                configuration.Bind(_appConfig);
+            }
+            catch (Exception ex)
+            {
+                // FIX 2: Show a popup if config fails, so you know why it crashed
+                System.Windows.MessageBox.Show($"Error loading config: {ex.Message}\n\nPath checked: {Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json")}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                
+                // Initialize a default/fallback config to prevent null reference crashes later
+                _appConfig = new AppConfig(); 
+            }
+
         InitializeComponent();
     // M4: Register Command Bindings for Shortcuts
         CommandBindings.Add(new System.Windows.Input.CommandBinding(RequestNewInfoCmd, Execute_RequestNewInfo));
