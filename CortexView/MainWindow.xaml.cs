@@ -105,8 +105,15 @@ public partial class MainWindow : Window
 
         InitializeComponent();
 
-        // Initialize the AI Service (Step 5.4: We hardcode Mock for now)
-        _aiService = new MockAiService();
+        // Initialize Service based on Config
+        if (_appConfig.AiServiceConfig.Provider.Equals("AWS", StringComparison.OrdinalIgnoreCase))
+        {
+            _aiService = new AwsBedrockService(_appConfig);
+        }
+        else
+        {
+            _aiService = new MockAiService();
+        }
 
         //Register Command Bindings for Shortcuts
         CommandBindings.Add(new System.Windows.Input.CommandBinding(RequestNewInfoCmd, Execute_RequestNewInfo));
@@ -157,6 +164,18 @@ public partial class MainWindow : Window
         if (windows.Count > 0)
         {
             WindowSelector.SelectedIndex = 0;
+        }
+
+        // Load Personas
+        var promptService = new PromptService();
+        var personas = promptService.LoadPersonas();
+        
+        AssistantModeComboBox.ItemsSource = personas;
+        
+        // Select the first one (usually Default or Alphabetical)
+        if (personas.Count > 0)
+        {
+            AssistantModeComboBox.SelectedIndex = 0;
         }
 
     }
@@ -503,8 +522,24 @@ public partial class MainWindow : Window
             var request = new AnalysisRequest(latestBitmap, selectedWindow.Title)
             {
                 OcrText = _changeDetection.TryExtractOcrText(latestBitmap) ?? string.Empty,
-                UserPrompt = "Analyze this interface."
+                UserPrompt = "Analyze this interface." // The user's query (could be dynamic later)
             };
+
+            // NEW: Inject the selected Persona settings (Step 6.5)
+            // We use Dispatcher because this might run on a background thread depending on caller
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (AssistantModeComboBox.SelectedItem is Persona selectedPersona)
+                {
+                    request.SystemPrompt = selectedPersona.SystemPrompt;
+                    request.Temperature = selectedPersona.Temperature;
+                    request.TopP = selectedPersona.TopP;
+                    request.MaxTokens = selectedPersona.MaxTokens;
+                    
+                    // Optional: Update status to show who is thinking
+                    UpdateStatusBar(AnalysisStatus.Analyzing, $"Analyzing with {selectedPersona.Name}...");
+                }
+            });
 
             // 4. Call Service (Async)
             // This will take 2 seconds (simulated) where the UI remains responsive!
