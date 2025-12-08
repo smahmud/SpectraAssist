@@ -10,6 +10,9 @@ using System.IO;
 using System.Windows.Controls;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using CortexView.Services; // For IAiAnalysisService, MockAiService
+using CortexView.Models;   // For AnalysisRequest
+using System.Windows.Documents; // For FlowDocument manipulation
 
 namespace CortexView;
 
@@ -19,6 +22,8 @@ namespace CortexView;
 public partial class MainWindow : Window
 {
     private AppConfig _appConfig;
+    
+    private readonly IAiAnalysisService _aiService;
 
     private const int GWL_EXSTYLE = -20;
     
@@ -60,12 +65,11 @@ public partial class MainWindow : Window
         ManualOverride
     }
 
-    // M4: Custom Commands for Shortcuts
+    //Custom Commands for Shortcuts
     public static readonly System.Windows.Input.RoutedCommand RequestNewInfoCmd = new System.Windows.Input.RoutedCommand();
     public static readonly System.Windows.Input.RoutedCommand NextSuggestionCmd = new System.Windows.Input.RoutedCommand();
     public static readonly System.Windows.Input.RoutedCommand ToggleCollapseCmd = new System.Windows.Input.RoutedCommand();
 
-// M4: Enum for Status State
     private enum AnalysisStatus
     {
         Idle,
@@ -79,7 +83,7 @@ public partial class MainWindow : Window
     {
         try 
             {
-                // FIX 1: Use AppDomain.CurrentDomain.BaseDirectory for reliable path resolution
+                // AppDomain.CurrentDomain.BaseDirectory for reliable path resolution
                 var builder = new ConfigurationBuilder()
                     .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
@@ -88,12 +92,11 @@ public partial class MainWindow : Window
                 
                 _appConfig = new AppConfig();
                 // Bind the "AiServiceConfig" section to the nested class inside AppConfig
-                // Note: Make sure your JSON keys match the class structure!
                 configuration.Bind(_appConfig);
             }
             catch (Exception ex)
             {
-                // FIX 2: Show a popup if config fails, so you know why it crashed
+                // Show a popup if config fails, so you know why it crashed
                 System.Windows.MessageBox.Show($"Error loading config: {ex.Message}\n\nPath checked: {Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json")}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 
                 // Initialize a default/fallback config to prevent null reference crashes later
@@ -101,7 +104,11 @@ public partial class MainWindow : Window
             }
 
         InitializeComponent();
-    // M4: Register Command Bindings for Shortcuts
+
+        // Initialize the AI Service (Step 5.4: We hardcode Mock for now)
+        _aiService = new MockAiService();
+
+        //Register Command Bindings for Shortcuts
         CommandBindings.Add(new System.Windows.Input.CommandBinding(RequestNewInfoCmd, Execute_RequestNewInfo));
         CommandBindings.Add(new System.Windows.Input.CommandBinding(NextSuggestionCmd, Execute_NextSuggestion));
         CommandBindings.Add(new System.Windows.Input.CommandBinding(ToggleCollapseCmd, Execute_ToggleCollapse));
@@ -360,10 +367,6 @@ public partial class MainWindow : Window
         // Call the base method first.
         base.OnMouseLeftButtonDown(e);
 
-        // Check if the window is currently being dragged from the system, 
-        // and if not, only call DragMove() if the mouse button state is Pressed.
-        // The standard check for maximizing on double-click is omitted here for simplicity.
-
         // Initiates the drag operation.
         this.DragMove(); // Allows window drag
     }
@@ -380,7 +383,7 @@ public partial class MainWindow : Window
 
         string outputDir = Path.Combine(projectRoot, "tests", "output");
         
-        //When no window is selected
+        // When no window is selected
         if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow)
         {
             UpdateStatusBar(AnalysisStatus.Idle, "No window selected for capture. Please choose an app window from the list.");
@@ -441,7 +444,7 @@ public partial class MainWindow : Window
 
             _lastCaptureTimeUtc = DateTime.UtcNow;
 
-            // NEW: trigger local analysis stub (auto reason)
+            // trigger local analysis stub (auto reason)
             _ = RunAnalysisIfNeededAsync(AnalysisTriggerReason.AutoChangeDetected, selectedWindow, (Bitmap)bmp.Clone(), changedFraction);
 
         }
@@ -480,16 +483,59 @@ public partial class MainWindow : Window
         Bitmap latestBitmap, 
         double changedFraction)
     {
-        // Experimental OCR (may return null for now)
-        string? ocrText = _changeDetection.TryExtractOcrText(latestBitmap);
+        // 1. Check if we should run (Significant change OR Manual override)
+        bool shouldRun = (reason == AnalysisTriggerReason.ManualOverride) ||
+                         (reason == AnalysisTriggerReason.AutoChangeDetected && 
+                          _changeDetection.DecideChange(changedFraction, _changeSensitivityFraction) == ChangeDecision.SignificantChange);
 
-        // For Milestone 3, this method only calls the local stub.
-        // Later milestones will add more branching here.
-        await RunLocalAnalysisStubAsync(
-            reason, 
-            changedFraction, 
-            selectedWindow.Title,
-            ocrText);
+        if (!shouldRun) return;
+
+        // 2. Prepare UI for Analysis
+        UpdateStatusBar(AnalysisStatus.Analyzing, $"Analyzing view... ({reason})");
+        
+        // SHOW THE OVERLAY
+        if (ThinkingOverlay != null) 
+            ThinkingOverlay.Visibility = Visibility.Visible;
+
+        try
+        {
+            // 3. Create Request
+            var request = new AnalysisRequest(latestBitmap, selectedWindow.Title)
+            {
+                OcrText = _changeDetection.TryExtractOcrText(latestBitmap) ?? string.Empty,
+                UserPrompt = "Analyze this interface."
+            };
+
+            // 4. Call Service (Async)
+            // This will take 2 seconds (simulated) where the UI remains responsive!
+            var response = await _aiService.AnalyzeImageAsync(request);
+
+            // 5. Handle Result
+            // HIDE THE OVERLAY
+            if (ThinkingOverlay != null) 
+                ThinkingOverlay.Visibility = Visibility.Collapsed;
+
+            if (response.IsSuccess)
+            {
+                UpdateStatusBar(AnalysisStatus.Idle, $"Analysis Complete. Used {response.TokenUsage} tokens.");
+                
+                // Clear and update the RichTextBox with the response
+                AiContextTextBox.Document.Blocks.Clear();
+                AiContextTextBox.Document.Blocks.Add(new Paragraph(new Run(response.SuggestionText)));
+            }
+            else
+            {
+                UpdateStatusBar(AnalysisStatus.Error, $"Analysis Failed: {response.ErrorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (ThinkingOverlay != null) 
+                ThinkingOverlay.Visibility = Visibility.Collapsed;
+                
+            UpdateStatusBar(AnalysisStatus.Error, "System Error during analysis.");
+            Logger.Log($"Critical Analysis Error: {ex}");
+        }
     }
 
     private Task RunLocalAnalysisStubAsync(
@@ -511,7 +557,7 @@ public partial class MainWindow : Window
             sb.AppendLine(ocrText);
         }
 
-        //AiContextTextBox.Text = sb.ToString();
+        // AiContextTextBox.Text = sb.ToString();
 
         return Task.CompletedTask;
     }
@@ -575,7 +621,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // M4: Command Handlers
+    // Command Handlers
     private void Execute_RequestNewInfo(object? sender, System.Windows.Input.ExecutedRoutedEventArgs? e)
     {
         // Reuse existing logic. Pass null args since logic doesn't depend on them.
@@ -597,7 +643,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // M4: Central helper to update status text and indicator color
+    // Central helper to update status text and indicator color
     private void UpdateStatusBar(AnalysisStatus status, string message)
     {
         // Update Text
