@@ -375,7 +375,13 @@ public partial class MainWindow : Window
         
         _captureTimer.Stop();
         UpdateStatusBar(AnalysisStatus.Idle, "Monitoring stopped.");
-    } 
+    }
+
+    private void RefreshWindowListButton_Click(object sender, RoutedEventArgs e)
+    {
+        RefreshWindowList();
+        UpdateStatusBar(AnalysisStatus.Idle, "Window list refreshed.");
+    }
 
     private async void NextSuggestionButton_Click(object? sender, RoutedEventArgs? e)
     {
