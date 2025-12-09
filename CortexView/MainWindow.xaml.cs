@@ -62,6 +62,9 @@ public partial class MainWindow : Window
 
     private readonly ChangeDetection _changeDetection = new ChangeDetection();
 
+    // Cache the last analyzed image for "Next Suggestion" retries
+    private Bitmap? _lastAnalyzedBitmap;
+
     private double _changeSensitivityFraction = 0.10; // 10% default
 
     private enum AnalysisTriggerReason
