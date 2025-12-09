@@ -629,39 +629,9 @@ public partial class MainWindow : Window
 
     private void RequestNewInformationButton_OnClick(object? sender, RoutedEventArgs? e)
     {
-        if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow)
-        {
-            // Green dot indicates successful selection and ready state
-            UpdateStatusBar(AnalysisStatus.Error, "No window selected for manual analysis. Please choose an app window.");
-            return;
-        }
-
-        // Reuse the same capture path as auto, but always treat as manual override.
-        if (!GetWindowRect(selectedWindow.Hwnd, out RECT rect))
-        {
-            UpdateStatusBar(AnalysisStatus.Error, $"Could not capture \"{selectedWindow.Title}\" for manual analysis. Is it closed?");
-            return;
-        }
-
-        int width = rect.Right - rect.Left;
-        int height = rect.Bottom - rect.Top;
-        if (width <= 0 || height <= 0)
-        {
-            UpdateStatusBar(AnalysisStatus.Error, $"Could not capture \"{selectedWindow.Title}\" for manual analysis. Is it minimized or off-screen?");
-            return;
-        }
-
-        using var bmp = new Bitmap(width, height);
-        using var g = Graphics.FromImage(bmp);
-        g.CopyFromScreen(rect.Left, rect.Top, 0, 0, bmp.Size);
-
-        double changedFraction = _changeDetection.ComputeChangedFraction(bmp);
-
-        // Always run analysis stub, regardless of sensitivity or hash decision.
-        _ = RunAnalysisIfNeededAsync(AnalysisTriggerReason.ManualOverride, selectedWindow, (Bitmap)bmp.Clone(), changedFraction);
-
-        // Change: Use UpdateStatusBar with SignificantChange (Action occurred)
-        UpdateStatusBar(AnalysisStatus.SignificantChange, $"Manual analysis requested for \"{selectedWindow.Title}\" (estimated change ~{changedFraction:P0}).");
+        // Reuse the central logic. 
+        // This ensures Storage, Validation, and Analysis logic are identical to "Capture Now".
+        CaptureAndStoreScreenshot(AnalysisTriggerReason.ManualOverride);
     }
 
     private void PinToggleButton_Click(object sender, RoutedEventArgs e)
