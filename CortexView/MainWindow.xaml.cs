@@ -201,6 +201,9 @@ public partial class MainWindow : Window
             AssistantModeComboBox.SelectedIndex = 0;
         }
 
+        // Disable "Next Suggestion" until we have a first capture
+        NextSuggestionButton.IsEnabled = false;
+
     }
 
     private static bool IsPriorityWindow(string title)
