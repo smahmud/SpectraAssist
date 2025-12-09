@@ -538,10 +538,21 @@ public partial class MainWindow : Window
 
         if (!shouldRun) return;
 
+        // Cache the bitmap for "Next Suggestion" logic
+        if (latestBitmap != null)
+        {
+            _lastAnalyzedBitmap?.Dispose(); // Cleanup old one to prevent memory leaks
+            _lastAnalyzedBitmap = (Bitmap)latestBitmap.Clone();
+            
+            // Enable the button now that we have a valid cache
+            // We use Dispatcher just in case this runs on a background thread
+            Application.Current.Dispatcher.Invoke(() => NextSuggestionButton.IsEnabled = true);
+        }
+
         // 2. Prepare UI for Analysis
         UpdateStatusBar(AnalysisStatus.Analyzing, $"Analyzing view... ({reason})");
         
-        // SHOW THE OVERLAY
+        // Show the overlay
         if (ThinkingOverlay != null) 
             ThinkingOverlay.Visibility = Visibility.Visible;
 
