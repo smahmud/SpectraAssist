@@ -168,27 +168,11 @@ public partial class MainWindow : Window
 
         this.Loaded += (s, e) => InitialWindowPosition();
 
+        
+
         OpacitySlider.ValueChanged += OpacitySlider_ValueChanged;
        
-        var windows = GetTopLevelWindows();
-
-        // simple sort: priority windows first, then alphabetical
-        windows.Sort((a, b) =>
-        {
-            bool aIsPriority = IsPriorityWindow(a.Title);
-            bool bIsPriority = IsPriorityWindow(b.Title);
-
-            if (aIsPriority && !bIsPriority) return -1;
-            if (!aIsPriority && bIsPriority) return 1;
-
-            return string.Compare(a.Title, b.Title, StringComparison.CurrentCultureIgnoreCase);
-        });
-
-        WindowSelector.ItemsSource = windows;
-        if (windows.Count > 0)
-        {
-            WindowSelector.SelectedIndex = 0;
-        }
+        RefreshWindowList();    
 
         // Load Personas
         var promptService = new PromptService();
@@ -814,6 +798,43 @@ public partial class MainWindow : Window
         {
             await _storageService.PurgeAllAsync();
             UpdateStatusBar(AnalysisStatus.SignificantChange, "All local data has been purged.");
+        }
+    }
+
+    private void RefreshWindowList()
+    {
+        var windows = GetTopLevelWindows();
+
+        // Simple sort: priority windows first, then alphabetical
+        windows.Sort((a, b) =>
+        {
+            bool aIsPriority = IsPriorityWindow(a.Title);
+            bool bIsPriority = IsPriorityWindow(b.Title);
+
+            if (aIsPriority && !bIsPriority) return -1;
+            if (!aIsPriority && bIsPriority) return 1;
+
+            return string.Compare(a.Title, b.Title, StringComparison.CurrentCultureIgnoreCase);
+        });
+
+        // Save the currently selected item title so we can try to re-select it after refresh
+        string? currentSelection = (WindowSelector.SelectedItem as TopLevelWindowInfo)?.Title;
+
+        WindowSelector.ItemsSource = windows;
+        
+        // Try to restore selection, or default to first item
+        if (windows.Count > 0)
+        {
+            // Find the item with the same title
+            var reselect = windows.Find(w => w.Title == currentSelection);
+            if (reselect != null)
+            {
+                WindowSelector.SelectedItem = reselect;
+            }
+            else
+            {
+                WindowSelector.SelectedIndex = 0;
+            }
         }
     }
 }
