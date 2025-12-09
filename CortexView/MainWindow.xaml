@@ -129,9 +129,54 @@
                                       Foreground="Black"
                                       Background="White"
                                       DisplayMemberPath="Name"
-                                      ToolTip="Select the personality and rules for the AI analysis."/>
+                                      ToolTip="Select the personality and rules for the AI analysis."
+                                      SelectionChanged="AssistantModeComboBox_SelectionChanged"/>
                         </StackPanel>                 
-                        
+<Expander Header="Advanced Parameters" Foreground="White" Margin="0,0,0,5" IsExpanded="False">
+                            <StackPanel Margin="10,0,0,0">
+                                <Grid Margin="0,5,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Temperature:" Foreground="#AAAAAA" FontSize="11"/>
+                                    <TextBlock x:Name="TemperatureValueLabel" Text="0.7" Foreground="White" FontSize="11" Grid.Column="1"/>
+                                </Grid>
+                                <Slider x:Name="TemperatureSlider" 
+                                        Minimum="0.0" Maximum="1.0" Value="0.7" 
+                                        SmallChange="0.1" LargeChange="0.2" TickFrequency="0.1" IsSnapToTickEnabled="True" 
+                                        Margin="0,2,0,5" 
+                                        ValueChanged="AdvancedParam_ValueChanged"/>
+
+                                <Grid Margin="0,5,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Top P:" Foreground="#AAAAAA" FontSize="11"/>
+                                    <TextBlock x:Name="TopPValueLabel" Text="1.0" Foreground="White" FontSize="11" Grid.Column="1"/>
+                                </Grid>
+                                <Slider x:Name="TopPSlider" 
+                                        Minimum="0.0" Maximum="1.0" Value="1.0" 
+                                        SmallChange="0.1" LargeChange="0.2" TickFrequency="0.1" IsSnapToTickEnabled="True" 
+                                        Margin="0,2,0,5" 
+                                        ValueChanged="AdvancedParam_ValueChanged"/>
+
+                                <Grid Margin="0,5,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Max Tokens:" Foreground="#AAAAAA" FontSize="11"/>
+                                    <TextBlock x:Name="MaxTokensValueLabel" Text="1000" Foreground="White" FontSize="11" Grid.Column="1"/>
+                                </Grid>
+                                <Slider x:Name="MaxTokensSlider" 
+                                        Minimum="100" Maximum="4000" Value="1000" 
+                                        SmallChange="100" LargeChange="500" TickFrequency="100" IsSnapToTickEnabled="True" 
+                                        Margin="0,2,0,5" 
+                                        ValueChanged="AdvancedParam_ValueChanged"/>
+                            </StackPanel>
+                        </Expander>                        
                         <StackPanel Margin="0,5,0,5">
                             <TextBlock Text="Target Window:" Foreground="White" Margin="0,0,0,2"/>
                             <Grid>
