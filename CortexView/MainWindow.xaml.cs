@@ -70,7 +70,8 @@ public partial class MainWindow : Window
     private enum AnalysisTriggerReason
     {
         AutoChangeDetected,
-        ManualOverride
+        ManualOverride,
+        RetrySameImage
     }
 
     //Custom Commands for Shortcuts
@@ -407,7 +408,7 @@ public partial class MainWindow : Window
         
         // ManualOverride forces the analysis even though the image is identical (0% change)
         // We pass a CLONE to ensure the cache stays valid if the service disposes the input
-        await RunAnalysisIfNeededAsync(AnalysisTriggerReason.ManualOverride, selectedWindow, (Bitmap)_lastAnalyzedBitmap.Clone(), 0.0);
+        await RunAnalysisIfNeededAsync(AnalysisTriggerReason.RetrySameImage, selectedWindow, (Bitmap)_lastAnalyzedBitmap.Clone(), 0.0);
     }
 
     private void CaptureIntervalSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -534,9 +535,10 @@ public partial class MainWindow : Window
         Bitmap latestBitmap, 
         double changedFraction)
     {
-        // 1. Check if we should run (Significant change OR Manual override)
+        // 1. Check if we should run (Significant change OR Manual override OR Retry)
         bool shouldRun = (reason == AnalysisTriggerReason.ManualOverride) ||
-                         (reason == AnalysisTriggerReason.AutoChangeDetected && 
+                         (reason == AnalysisTriggerReason.RetrySameImage) ||
+                         (reason == AnalysisTriggerReason.AutoChangeDetected &&
                           _changeDetection.DecideChange(changedFraction, _changeSensitivityFraction) == ChangeDecision.SignificantChange);
 
         if (!shouldRun) return;
@@ -579,8 +581,11 @@ public partial class MainWindow : Window
                     request.TopP = selectedPersona.TopP;
                     request.MaxTokens = selectedPersona.MaxTokens;
                     
-                    // Optional: Update status to show who is thinking
-                    UpdateStatusBar(AnalysisStatus.Analyzing, $"Analyzing with {selectedPersona.Name}...");
+                    // Update status to show who is thinking
+                    string statusMsg = reason == AnalysisTriggerReason.RetrySameImage
+                        ? $"Requesting alternative suggestion from {selectedPersona.Name}..."
+                        : $"Analyzing with {selectedPersona.Name}...";
+                    UpdateStatusBar(AnalysisStatus.Analyzing, statusMsg);
                 }
             });
 
