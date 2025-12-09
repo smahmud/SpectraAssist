@@ -389,9 +389,22 @@ public partial class MainWindow : Window
         UpdateStatusBar(AnalysisStatus.Idle, "Monitoring stopped.");
     } 
 
-    private void NextSuggestionButton_Click(object? sender, RoutedEventArgs? e)
+    private async void NextSuggestionButton_Click(object? sender, RoutedEventArgs? e)
     {
-        UpdateStatusBar(AnalysisStatus.Idle, "Next suggestion requested (Bedrock integration in later milestones).");
+        if (_lastAnalyzedBitmap == null)
+        {
+            UpdateStatusBar(AnalysisStatus.Error, "No previous analysis to retry. Please capture first.");
+            return;
+        }
+
+        if (WindowSelector.SelectedItem is not TopLevelWindowInfo selectedWindow) return;
+
+        // Trigger analysis with the CACHED image (no new capture)
+        UpdateStatusBar(AnalysisStatus.Analyzing, "Requesting alternative suggestion...");
+        
+        // ManualOverride forces the analysis even though the image is identical (0% change)
+        // We pass a CLONE to ensure the cache stays valid if the service disposes the input
+        await RunAnalysisIfNeededAsync(AnalysisTriggerReason.ManualOverride, selectedWindow, (Bitmap)_lastAnalyzedBitmap.Clone(), 0.0);
     }
 
     private void CaptureIntervalSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
