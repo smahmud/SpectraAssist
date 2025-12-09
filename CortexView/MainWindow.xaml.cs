@@ -383,6 +383,31 @@ public partial class MainWindow : Window
         UpdateStatusBar(AnalysisStatus.Idle, "Window list refreshed.");
     }
 
+    private void AssistantModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (AssistantModeComboBox.SelectedItem is Persona p)
+        {
+            // Update sliders to match the selected persona's defaults
+            // We use 'if' checks to avoid null reference if UI isn't fully loaded yet
+            if (TemperatureSlider != null) TemperatureSlider.Value = p.Temperature;
+            if (TopPSlider != null) TopPSlider.Value = p.TopP;
+            if (MaxTokensSlider != null) MaxTokensSlider.Value = p.MaxTokens;
+        }
+    }
+
+    private void AdvancedParam_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        // Update the text labels dynamically as you drag
+        if (TemperatureSlider != null && TemperatureValueLabel != null)
+            TemperatureValueLabel.Text = TemperatureSlider.Value.ToString("F1");
+
+        if (TopPSlider != null && TopPValueLabel != null)
+            TopPValueLabel.Text = TopPSlider.Value.ToString("F1");
+
+        if (MaxTokensSlider != null && MaxTokensValueLabel != null)
+            MaxTokensValueLabel.Text = ((int)MaxTokensSlider.Value).ToString();
+    }   
+
     private async void NextSuggestionButton_Click(object? sender, RoutedEventArgs? e)
     {
         if (_lastAnalyzedBitmap == null)
@@ -560,21 +585,22 @@ public partial class MainWindow : Window
                 UserPrompt = "Analyze this interface." // The user's query (could be dynamic later)
             };
 
-            // Inject the selected Persona settings
+            // Inject the selected Persona settings + Slide Overrides
             // We use Dispatcher because this might run on a background thread depending on caller
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 if (AssistantModeComboBox.SelectedItem is Persona selectedPersona)
                 {
-                    request.SystemPrompt = selectedPersona.SystemPrompt;
-                    request.Temperature = selectedPersona.Temperature;
-                    request.TopP = selectedPersona.TopP;
-                    request.MaxTokens = selectedPersona.MaxTokens;
+                    // Use the Slider values (User Overrides)
+                    request.Temperature = (float)TemperatureSlider.Value;
+                    request.TopP = (float)TopPSlider.Value;
+                    request.MaxTokens = (int)MaxTokensSlider.Value;
                     
-                    // Update status to show who is thinking
+                    // Smarter status text based on Reason
                     string statusMsg = reason == AnalysisTriggerReason.RetrySameImage
                         ? $"Requesting alternative suggestion from {selectedPersona.Name}..."
                         : $"Analyzing with {selectedPersona.Name}...";
+                        
                     UpdateStatusBar(AnalysisStatus.Analyzing, statusMsg);
                 }
             });
