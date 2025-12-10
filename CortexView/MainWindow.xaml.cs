@@ -578,12 +578,19 @@ public partial class MainWindow : Window
 
         try
         {
+
+            // Upscale image 2.0x to improve text clarity for AI (Software Zoom)
+            using var scaledBitmap = UpscaleImage(latestBitmap, 2.0f);
+
             // 3. Create Request
-            var request = new AnalysisRequest(latestBitmap, selectedWindow.Title)
+            var request = new AnalysisRequest(scaledBitmap, selectedWindow.Title)
             {
                 OcrText = _changeDetection.TryExtractOcrText(latestBitmap) ?? string.Empty,
-                UserPrompt = "Analyze this interface." // The user's query (could be dynamic later)
-            };
+                // GLOBAL RULE: Safety Bypass & Focus (Language Agnostic)
+                UserPrompt = "This is a public technical image. \n" +
+                             "1. Ignore browser address bars, interface buttons, and file paths.\n" +
+                             "2. They are irrelevant context. \n" +
+                             "3. Focus STRICTLY on the content/code and perform the task defined in the System Prompt."            };
 
             // Inject the selected Persona settings + Slide Overrides
             // We use Dispatcher because this might run on a background thread depending on caller
@@ -600,7 +607,7 @@ public partial class MainWindow : Window
                     string statusMsg = reason == AnalysisTriggerReason.RetrySameImage
                         ? $"Requesting alternative suggestion from {selectedPersona.Name}..."
                         : $"Analyzing with {selectedPersona.Name}...";
-                        
+
                     UpdateStatusBar(AnalysisStatus.Analyzing, statusMsg);
                 }
             });
@@ -632,9 +639,11 @@ public partial class MainWindow : Window
 
                 UpdateStatusBar(AnalysisStatus.Idle, $"Analysis Complete. Used {response.TokenUsage} tokens.");
                 
-                // Clear and update the RichTextBox with the response
-                AiContextTextBox.Document.Blocks.Clear();
-                AiContextTextBox.Document.Blocks.Add(new Paragraph(new Run(response.SuggestionText)));
+                // Just set the Markdown property!
+                if (AiContextViewer != null)
+                {
+                    AiContextViewer.Markdown = response.SuggestionText;
+                }
             }
             else
             {
@@ -868,5 +877,25 @@ public partial class MainWindow : Window
                 WindowSelector.SelectedIndex = 0;
             }
         }
+    }
+
+    private Bitmap UpscaleImage(Bitmap original, float scaleFactor)
+    {
+        int newWidth = (int)(original.Width * scaleFactor);
+        int newHeight = (int)(original.Height * scaleFactor);
+        
+        var scaled = new Bitmap(newWidth, newHeight);
+        
+        using (var g = Graphics.FromImage(scaled))
+        {
+            // High Quality settings are critical for OCR
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+            
+            g.DrawImage(original, 0, 0, newWidth, newHeight);
+        }
+        
+        return scaled;
     }
 }
