@@ -572,82 +572,84 @@ public partial class MainWindow : Window
         // 2. Prepare UI for Analysis
         UpdateStatusBar(AnalysisStatus.Analyzing, $"Analyzing view... ({reason})");
         
-        // Show the overlay
+        // Show the overlay explicitly so the user knows something is happening
         if (ThinkingOverlay != null) 
             ThinkingOverlay.Visibility = Visibility.Visible;
 
         try
         {
-
             // Upscale image 2.0x to improve text clarity for AI (Software Zoom)
-            using var scaledBitmap = UpscaleImage(latestBitmap, 2.0f);
+            // Run GDI+ logic on background thread to prevent UI freeze
+            Bitmap scaledBitmap = await Task.Run(() => UpscaleImage(latestBitmap, 2.0f));
 
-            // 3. Create Request
-            var request = new AnalysisRequest(scaledBitmap, selectedWindow.Title)
+            using (scaledBitmap)
             {
-                OcrText = _changeDetection.TryExtractOcrText(latestBitmap) ?? string.Empty,
-                // GLOBAL RULE: Safety Bypass & Focus (Language Agnostic)
-                UserPrompt = "This is a public technical image. \n" +
-                             "1. Ignore browser address bars, interface buttons, and file paths.\n" +
-                             "2. They are irrelevant context. \n" +
-                             "3. Focus STRICTLY on the content/code and perform the task defined in the System Prompt."            };
-
-            // Inject the selected Persona settings + Slide Overrides
-            // We use Dispatcher because this might run on a background thread depending on caller
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                if (AssistantModeComboBox.SelectedItem is Persona selectedPersona)
+                // 3. Create Request (This USES the scaledBitmap, so it must be inside)
+                var request = new AnalysisRequest(scaledBitmap, selectedWindow.Title)
                 {
-                    // Use the Slider values (User Overrides)
-                    request.Temperature = (float)TemperatureSlider.Value;
-                    request.TopP = (float)TopPSlider.Value;
-                    request.MaxTokens = (int)MaxTokensSlider.Value;
-                    
-                    // Smarter status text based on Reason
-                    string statusMsg = reason == AnalysisTriggerReason.RetrySameImage
-                        ? $"Requesting alternative suggestion from {selectedPersona.Name}..."
-                        : $"Analyzing with {selectedPersona.Name}...";
+                    OcrText = _changeDetection.TryExtractOcrText(latestBitmap) ?? string.Empty,
 
-                    UpdateStatusBar(AnalysisStatus.Analyzing, statusMsg);
-                }
-            });
+                    // GLOBAL RULE: Safety Bypass & Focus (Language Agnostic)
+                    UserPrompt = "This is a public technical image. \n" +
+                                "1. Ignore browser address bars, interface buttons, and file paths.\n" +
+                                "2. They are irrelevant context. \n" +
+                                "3. Focus STRICTLY on the content/code and perform the task defined in the System Prompt."            };
 
-            // 4. Call Service (Async)
-            // This will take 2 seconds (simulated) where the UI remains responsive!
-            var response = await _aiService.AnalyzeImageAsync(request);
-
-            // 5. Handle Result
-            // HIDE THE OVERLAY
-            if (ThinkingOverlay != null) 
-                ThinkingOverlay.Visibility = Visibility.Collapsed;
-
-            if (response.IsSuccess)
-            {
-                 // Save Screenshot
-                string personaName = AssistantModeComboBox.SelectedItem is Persona p ? p.Name : "Unknown";
-                string? savedPath = await _storageService.SaveScreenshotAsync(latestBitmap, personaName);
-
-                // Log Audit Entry
-                await _auditService.LogInteractionAsync(new AuditEntry
+                // Inject the selected Persona settings + Slide Overrides
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    Timestamp = DateTime.Now,
-                    Persona = personaName,
-                    ImagePath = savedPath ?? "Not Saved",
-                    TokenUsage = response.TokenUsage,
-                    RequestContext = selectedWindow.Title
+                    if (AssistantModeComboBox.SelectedItem is Persona selectedPersona)
+                    {
+                        // Use the Slider values (User Overrides)
+                        request.Temperature = (float)TemperatureSlider.Value;
+                        request.TopP = (float)TopPSlider.Value;
+                        request.MaxTokens = (int)MaxTokensSlider.Value;
+                        
+                        // Smarter status text based on Reason
+                        string statusMsg = reason == AnalysisTriggerReason.RetrySameImage
+                            ? $"Requesting alternative suggestion from {selectedPersona.Name}..."
+                            : $"Analyzing with {selectedPersona.Name}...";
+
+                        UpdateStatusBar(AnalysisStatus.Analyzing, statusMsg);
+                    }
                 });
 
-                UpdateStatusBar(AnalysisStatus.Idle, $"Analysis Complete. Used {response.TokenUsage} tokens.");
-                
-                // Just set the Markdown property!
-                if (AiContextViewer != null)
+                // 4. Call Service (Async) - This reads the bitmap bytes!
+                var response = await _aiService.AnalyzeImageAsync(request);
+
+                // 5. Handle Result
+                if (ThinkingOverlay != null) 
+                    ThinkingOverlay.Visibility = Visibility.Collapsed;
+
+                if (response.IsSuccess)
                 {
-                    AiContextViewer.Markdown = response.SuggestionText;
+                    // We save 'latestBitmap' (original), NOT 'scaledBitmap' (upscaled).
+                    // This keeps our storage usage low.
+                    string personaName = AssistantModeComboBox.SelectedItem is Persona p ? p.Name : "Unknown";
+                    string? savedPath = await _storageService.SaveScreenshotAsync(latestBitmap, personaName);
+
+                    // Log Audit Entry
+                    await _auditService.LogInteractionAsync(new AuditEntry
+                    {
+                        Timestamp = DateTime.Now,
+                        Persona = personaName,
+                        ImagePath = savedPath ?? "Not Saved",
+                        TokenUsage = response.TokenUsage,
+                        RequestContext = selectedWindow.Title
+                    });
+
+                    UpdateStatusBar(AnalysisStatus.Idle, $"Analysis Complete. Used {response.TokenUsage} tokens.");
+                    
+                    // Update UI with Markdown
+                    if (AiContextViewer != null)
+                    {
+                        AiContextViewer.Markdown = response.SuggestionText;
+                    }
                 }
-            }
-            else
-            {
-                UpdateStatusBar(AnalysisStatus.Error, $"Analysis Failed: {response.ErrorMessage}");
+                else
+                {
+                    UpdateStatusBar(AnalysisStatus.Error, $"Analysis Failed: {response.ErrorMessage}");
+                }
             }
         }
         catch (Exception ex)
@@ -888,9 +890,9 @@ public partial class MainWindow : Window
         
         using (var g = Graphics.FromImage(scaled))
         {
-            // High Quality settings are critical for OCR
-            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            // NearestNeighbor = Fastest & Sharpest for text (pixelated look, not blurry)
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             
             g.DrawImage(original, 0, 0, newWidth, newHeight);
