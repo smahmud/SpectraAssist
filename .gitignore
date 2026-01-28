@@ -5,11 +5,21 @@
 
 #Exclude Documentation Strategy docs
 docs/Milestone_*_implementation_plan.md
-docs/SpectraAssist-strategy_v1.md
-docs/SpectraAssist-milestones.md
+docs/Milestone-8-brainstorming-notes.md
+docs/project-milestones.md
+docs/project-strategy.md
+
+# Exclude development-only folders
+.kiro/
+docs/notes/
 
 howto/
 chats/
+refs/
+
+# Exclude all prompts except Default.md
+CortexView/Prompts/*
+!CortexView/Prompts/Default.md
 # User-specific files
 *.rsuser
 *.suo
