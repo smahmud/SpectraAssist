@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortexView.Tests", "CortexV
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortexView.Domain", "CortexView.Domain\CortexView.Domain.csproj", "{7D224D47-F55A-494C-BE7D-B588CF35C6D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortexView.Infrastructure", "CortexView.Infrastructure\CortexView.Infrastructure.csproj", "{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{7D224D47-F55A-494C-BE7D-B588CF35C6D3}.Release|x64.Build.0 = Release|Any CPU
 		{7D224D47-F55A-494C-BE7D-B588CF35C6D3}.Release|x86.ActiveCfg = Release|Any CPU
 		{7D224D47-F55A-494C-BE7D-B588CF35C6D3}.Release|x86.Build.0 = Release|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Debug|x64.Build.0 = Debug|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Debug|x86.Build.0 = Debug|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Release|x64.ActiveCfg = Release|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Release|x64.Build.0 = Release|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Release|x86.ActiveCfg = Release|Any CPU
+		{CEE57198-8BE3-4A71-8A3B-764FE2AB0261}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
