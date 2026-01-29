@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using CortexView.Models;
+using CortexView.Domain.Entities;
 
 namespace CortexView.Services
 {
@@ -55,7 +55,11 @@ namespace CortexView.Services
         private Persona ParsePersonaFile(string filePath)
         {
             var lines = File.ReadAllLines(filePath);
-            var persona = new Persona { Name = Path.GetFileNameWithoutExtension(filePath) };
+            string name = Path.GetFileNameWithoutExtension(filePath);
+            float temperature = 0.7f;
+            float topP = 0.9f;
+            int maxTokens = 1024;
+            string systemPrompt = string.Empty;
             
             // Check for Frontmatter (starts with ---)
             if (lines.Length > 0 && lines[0].Trim() == "---")
@@ -79,10 +83,10 @@ namespace CortexView.Services
 
                         switch (key)
                         {
-                            case "Name": persona.Name = val; break;
-                            case "Temperature": float.TryParse(val, out float t); persona.Temperature = t; break;
-                            case "TopP": float.TryParse(val, out float p); persona.TopP = p; break;
-                            case "MaxTokens": int.TryParse(val, out int m); persona.MaxTokens = m; break;
+                            case "Name": name = val; break;
+                            case "Temperature": float.TryParse(val, out temperature); break;
+                            case "TopP": float.TryParse(val, out topP); break;
+                            case "MaxTokens": int.TryParse(val, out maxTokens); break;
                         }
                     }
                 }
@@ -90,8 +94,15 @@ namespace CortexView.Services
                 // Extract Content (skip the second ---)
                 if (endOfFrontmatter > 0)
                 {
-                    persona.SystemPrompt = string.Join(Environment.NewLine, lines.Skip(endOfFrontmatter + 1)).Trim();
-                    return persona;
+                    systemPrompt = string.Join(Environment.NewLine, lines.Skip(endOfFrontmatter + 1)).Trim();
+                    return new Persona
+                    {
+                        Name = name,
+                        SystemPrompt = systemPrompt,
+                        Temperature = temperature,
+                        TopP = topP,
+                        MaxTokens = maxTokens
+                    };
                 }
             }
 
@@ -99,15 +110,22 @@ namespace CortexView.Services
             // Try to use first line as name if it starts with #
             if (lines.Length > 0 && lines[0].StartsWith("#"))
             {
-                persona.Name = lines[0].TrimStart('#', ' ').Trim();
-                persona.SystemPrompt = string.Join(Environment.NewLine, lines.Skip(1)).Trim();
+                name = lines[0].TrimStart('#', ' ').Trim();
+                systemPrompt = string.Join(Environment.NewLine, lines.Skip(1)).Trim();
             }
             else
             {
-                persona.SystemPrompt = string.Join(Environment.NewLine, lines).Trim();
+                systemPrompt = string.Join(Environment.NewLine, lines).Trim();
             }
 
-            return persona;
+            return new Persona
+            {
+                Name = name,
+                SystemPrompt = systemPrompt,
+                Temperature = temperature,
+                TopP = topP,
+                MaxTokens = maxTokens
+            };
         }
 
         private Persona CreateFallbackPersona()
