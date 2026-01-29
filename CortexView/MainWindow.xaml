@@ -3,20 +3,16 @@
    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
    xmlns:md="clr-namespace:Markdig.Wpf;assembly=Markdig.Wpf"
    xmlns:local="clr-namespace:CortexView"
+   xmlns:vm="clr-namespace:CortexView.ViewModels"
    Title="CortexView Overlay Assistant"
    Height="400"
    Width="300"
-   Topmost="True"
+   Topmost="{Binding IsTopmost}"
    WindowStyle="None"
    AllowsTransparency="True"
    Background="Transparent"
    WindowStartupLocation="Manual"
    ResizeMode="CanResize">
-   <Window.InputBindings>
-      <KeyBinding Command="{x:Static local:MainWindow.RequestNewInfoCmd}" Key="R" Modifiers="Control+Shift"/>    
-      <KeyBinding Command="{x:Static local:MainWindow.NextSuggestionCmd}" Key="N" Modifiers="Control+Shift"/>    
-      <KeyBinding Command="{x:Static local:MainWindow.ToggleCollapseCmd}" Key="O" Modifiers="Control+Shift"/>
-   </Window.InputBindings>
    <Border Background="#FF202020" CornerRadius="4" BorderBrush="#FF444444" BorderThickness="1">
       <Grid x:Name="RootLayoutGrid">
          <Grid.RowDefinitions>
@@ -78,11 +74,10 @@
                                       Grid.Column="1"
                                       Content="📌"
                                       ToolTip="Toggle Always On Top (Pinned)"
-                                      IsChecked="True"
+                                      IsChecked="{Binding IsTopmost, Mode=TwoWay}"
                                       Width="24"
                                       Height="24"                                      
-                                      Margin="0,0,8,0"
-                                      Click="PinToggleButton_Click"/>
+                                      Margin="0,0,8,0"/>
 
                         <TextBlock Grid.Column="2" 
                                    Text="Opacity:" 
@@ -94,12 +89,12 @@
                                 Grid.Column="3"
                                 Minimum="0.2" 
                                 Maximum="1.0" 
-                                Value="0.6" Width="50" 
+                                Value="{Binding Opacity, Mode=TwoWay}" 
+                                Width="50" 
                                 SmallChange="0.05" 
                                 IsSnapToTickEnabled="True" 
                                 TickFrequency="0.1" 
-                                VerticalAlignment="Center"
-                                ValueChanged="OpacitySlider_ValueChanged"/>
+                                VerticalAlignment="Center"/>
                         
                         <Button Grid.Column="4" 
                                 Content="X" 
@@ -109,7 +104,7 @@
                                 BorderThickness="0"
                                 Width="20"
                                 Height="20"
-                                Click="CloseButton_Click"
+                                Command="{Binding CloseCommand}"
                                 Margin="8,0,0,0"/>
                     </Grid>
 
@@ -127,57 +122,14 @@
                         <StackPanel Margin="0,5,0,5">
                             <TextBlock Text="Assistant Mode:" Foreground="White" Margin="0,0,0,2"/>
                             <ComboBox x:Name="AssistantModeComboBox"
+                                      ItemsSource="{Binding Personas}"
+                                      SelectedItem="{Binding SelectedPersona, Mode=TwoWay}"
                                       Foreground="Black"
                                       Background="White"
                                       DisplayMemberPath="Name"
-                                      ToolTip="Select the personality and rules for the AI analysis."
-                                      SelectionChanged="AssistantModeComboBox_SelectionChanged"/>
+                                      ToolTip="Select the personality and rules for the AI analysis."/>
                         </StackPanel>                 
-<Expander Header="Advanced Parameters" Foreground="White" Margin="0,0,0,5" IsExpanded="False">
-                            <StackPanel Margin="10,0,0,0">
-                                <Grid Margin="0,5,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Temperature:" Foreground="#AAAAAA" FontSize="11"/>
-                                    <TextBlock x:Name="TemperatureValueLabel" Text="0.7" Foreground="White" FontSize="11" Grid.Column="1"/>
-                                </Grid>
-                                <Slider x:Name="TemperatureSlider" 
-                                        Minimum="0.0" Maximum="1.0" Value="0.7" 
-                                        SmallChange="0.1" LargeChange="0.2" TickFrequency="0.1" IsSnapToTickEnabled="True" 
-                                        Margin="0,2,0,5" 
-                                        ValueChanged="AdvancedParam_ValueChanged"/>
-
-                                <Grid Margin="0,5,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Top P:" Foreground="#AAAAAA" FontSize="11"/>
-                                    <TextBlock x:Name="TopPValueLabel" Text="1.0" Foreground="White" FontSize="11" Grid.Column="1"/>
-                                </Grid>
-                                <Slider x:Name="TopPSlider" 
-                                        Minimum="0.0" Maximum="1.0" Value="1.0" 
-                                        SmallChange="0.1" LargeChange="0.2" TickFrequency="0.1" IsSnapToTickEnabled="True" 
-                                        Margin="0,2,0,5" 
-                                        ValueChanged="AdvancedParam_ValueChanged"/>
-
-                                <Grid Margin="0,5,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Max Tokens:" Foreground="#AAAAAA" FontSize="11"/>
-                                    <TextBlock x:Name="MaxTokensValueLabel" Text="1000" Foreground="White" FontSize="11" Grid.Column="1"/>
-                                </Grid>
-                                <Slider x:Name="MaxTokensSlider" 
-                                        Minimum="100" Maximum="4000" Value="1000" 
-                                        SmallChange="100" LargeChange="500" TickFrequency="100" IsSnapToTickEnabled="True" 
-                                        Margin="0,2,0,5" 
-                                        ValueChanged="AdvancedParam_ValueChanged"/>
-                            </StackPanel>
-                        </Expander>                        
+                        
                         <StackPanel Margin="0,5,0,5">
                             <TextBlock Text="Target Window:" Foreground="White" Margin="0,0,0,2"/>
                             <Grid>
@@ -188,10 +140,11 @@
 
                                 <ComboBox x:Name="WindowSelector" 
                                           Grid.Column="0"
+                                          ItemsSource="{Binding Windows}"
+                                          SelectedItem="{Binding SelectedWindow, Mode=TwoWay}"
                                           DisplayMemberPath="Title" 
                                           Foreground="Black" 
-                                          Background="White"
-                                          SelectionChanged="WindowSelector_SelectionChanged"/>
+                                          Background="White"/>
                                 
                                 <Button x:Name="RefreshWindowListButton"
                                         Grid.Column="1"
@@ -199,55 +152,39 @@
                                         Width="25"
                                         Margin="5,0,0,0"
                                         ToolTip="Refresh Window List"
-                                        Click="RefreshWindowListButton_Click"/>
+                                        Command="{Binding RefreshWindowListCommand}"/>
                             </Grid>
                         </StackPanel>
                         
                         <StackPanel Margin="0,5,0,5">
-                            <TextBlock x:Name="IntervalLabel" Text="Capture Interval: 3s" Foreground="White" Margin="0,0,0,2"/>
+                            <TextBlock Text="{Binding CaptureInterval, StringFormat='Capture Interval: {0}s'}" Foreground="White" Margin="0,0,0,2"/>
                             <Slider x:Name="CaptureIntervalSlider" 
                                     Minimum="1" 
                                     Maximum="10" 
-                                    Value="3" 
+                                    Value="{Binding CaptureInterval, Mode=TwoWay}" 
                                     IsSnapToTickEnabled="True" 
-                                    TickFrequency="1"
-                                    ValueChanged="CaptureIntervalSlider_ValueChanged"/>
+                                    TickFrequency="1"/>
                         </StackPanel>
                         
                         <StackPanel Margin="0,5,0,5">
-                            <TextBlock x:Name="SensitivityLabel" Text="Change Sensitivity: 10%" Foreground="White" Margin="0,0,0,2"/>
+                            <TextBlock Text="{Binding ChangeSensitivity, StringFormat='Change Sensitivity: {0}%'}" Foreground="White" Margin="0,0,0,2"/>
                             <Slider x:Name="ChangeSensitivitySlider" 
                                     Minimum="1" 
                                     Maximum="50" 
-                                    Value="10" 
+                                    Value="{Binding ChangeSensitivity, Mode=TwoWay}" 
                                     IsSnapToTickEnabled="True" 
-                                    TickFrequency="1"
-                                    ValueChanged="ChangeSensitivitySlider_ValueChanged"/>
+                                    TickFrequency="1"/>
                         </StackPanel>
                         
-                        <StackPanel Margin="0,5,0,5">
-                            <TextBlock Text="Exclusion Mode:" Foreground="White" Margin="0,0,0,2"/>
-                            <ComboBox x:Name="ExclusionModeComboBox" 
-                                      IsEnabled="False" 
-                                      Foreground="Black" 
-                                      Background="White"
-                                      SelectionChanged="ExclusionModeComboBox_SelectionChanged">
-                                <ComboBoxItem Content="Dynamic Detection" IsSelected="True"/>
-                                <ComboBoxItem Content="Static Mask"/>
-                                <ComboBoxItem Content="Configurable Exclusion"/>
-                            </ComboBox> 
-                        </StackPanel>
-
                         <Separator Background="#444" Margin="0,10,0,10"/>
                         <TextBlock Text="Storage and Privacy" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
 
                         <CheckBox x:Name="StorageEnabledCheckBox"
                                   Content="Save Screenshots Locally"
+                                  IsChecked="{Binding StorageEnabled, Mode=TwoWay}"
                                   Foreground="White"
                                   Margin="0,0,0,5"
-                                  ToolTip="If enabled, screenshots and logs will be saved to disk."
-                                  Checked="StorageEnabledCheckBox_Checked"
-                                  Unchecked="StorageEnabledCheckBox_Unchecked"/>
+                                  ToolTip="If enabled, screenshots and logs will be saved to disk."/>
 
                         <TextBlock Text="Storage Path:" Foreground="#AAAAAA" FontSize="11" Margin="0,5,0,0"/>
                         <Grid Margin="0,2,0,5">
@@ -256,7 +193,7 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="StoragePathTextBox"
-                                     Text="MyDocuments/..."
+                                     Text="{Binding StoragePath, Mode=OneWay}"
                                      IsReadOnly="True"
                                      Foreground="Gray" Background="#222" BorderBrush="#444"
                                      Padding="2"/>
@@ -265,7 +202,7 @@
                                     Content="..."
                                     Width="25" Margin="5,0,0,0"
                                     ToolTip="Browse Folder..."
-                                    Click="BrowseStorageButton_Click"/>
+                                    Command="{Binding BrowseStorageCommand}"/>
                         </Grid>
 
                         <Grid Margin="0,5,0,0">
@@ -274,26 +211,26 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Retention (Days):" Foreground="#AAAAAA" FontSize="11"/>
-                            <TextBlock x:Name="RetentionValueLabel" Text="7" Foreground="White" FontSize="11" Grid.Column="1"/>
+                            <TextBlock Text="{Binding RetentionDays}" Foreground="White" FontSize="11" Grid.Column="1"/>
                         </Grid>
                         <Slider x:Name="RetentionSlider"
-                                Minimum="1" Maximum="30" Value="7"
+                                Minimum="1" Maximum="30" 
+                                Value="{Binding RetentionDays, Mode=TwoWay}"
                                 TickFrequency="1" IsSnapToTickEnabled="True"
-                                Margin="0,2,0,5"
-                                ValueChanged="RetentionSlider_ValueChanged"/>
+                                Margin="0,2,0,5"/>
 
                         <UniformGrid Columns="2" Margin="0,10,0,0">
                             <Button x:Name="OpenStorageButton"
                                     Content="Open Folder"
                                     Margin="0,0,5,0"
                                     Background="#444" Foreground="White" BorderThickness="0"
-                                    Click="OpenStorageButton_Click"/>
+                                    Command="{Binding OpenStorageCommand}"/>
                             <Button x:Name="PurgeDataButton"
                                     Content="Purge All"
                                     Margin="5,0,0,0"
                                     Background="#880000" Foreground="White" BorderThickness="0"
                                     ToolTip="DANGER: Deletes all saved images and logs."
-                                    Click="PurgeDataButton_Click"/>
+                                    Command="{Binding PurgeStorageCommand}"/>
                         </UniformGrid>
                         
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0" HorizontalAlignment="Stretch">
@@ -302,14 +239,13 @@
                                 Width="110"
                                 Margin="0,0,8,0"
                                 HorizontalAlignment="Left"
-                                Click="CaptureNowButton_Click"/>
+                                Command="{Binding CaptureNowCommand}"/>
 
                              <ToggleButton x:Name="MonitorToggleButton"
                                 Content="Start Monitoring"
                                 Width="130"
                                 HorizontalAlignment="Left"
-                                Checked="MonitorToggleButton_Checked"
-                                Unchecked="MonitorToggleButton_Unchecked"/>
+                                IsChecked="{Binding IsMonitoring, Mode=TwoWay}"/>
                         </StackPanel>
 
                     </StackPanel>
@@ -321,7 +257,7 @@
             <Grid Grid.Row="1">
                 <ScrollViewer Padding="8" VerticalScrollBarVisibility="Auto">
                     <md:MarkdownViewer x:Name="AiContextViewer"
-                        Markdown="Welcome to **CortexView**. Please select a window..."
+                        Markdown="{Binding SuggestionText}"
                         Foreground="White"
                         Background="Transparent"
                         FontFamily="Segoe UI"
@@ -384,11 +320,11 @@
                   <Button x:Name="RequestNewInformationButton"
                      Content="Request New Information"
                      Margin="0,0,0,5"
-                     Click="RequestNewInformationButton_OnClick" />
+                     Command="{Binding CaptureNowCommand}" />
 
                   <Button x:Name="NextSuggestionButton"
                      Content="Next Suggestion"
-                     Click="NextSuggestionButton_Click"/>
+                     Command="{Binding NextSuggestionCommand}"/>
                </StackPanel>
 
                <!-- Row # 1 Status / gentle messages -->
@@ -402,7 +338,7 @@
                            VerticalAlignment="Center"/>
 
                   <TextBlock x:Name="StatusTextBlock"
-                              Text="Status: Idle"
+                              Text="{Binding StatusText}"
                               Foreground="#FFBBBBBB" 
                               FontSize="10" 
                               VerticalAlignment="Center"/>

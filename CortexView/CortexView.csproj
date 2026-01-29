@@ -10,13 +10,22 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.BedrockRuntime" Version="4.0.14.1" />
-    <PackageReference Include="AWSSDK.Core" Version="4.0.3.4" />
+    <PackageReference Include="AWSSDK.BedrockRuntime" Version="4.0.15" />
+    <PackageReference Include="AWSSDK.Core" Version="4.0.3.10" />
     <PackageReference Include="Markdig.Wpf" Version="0.5.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
     <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\CortexView.Application\CortexView.Application.csproj" />
+    <ProjectReference Include="..\CortexView.Domain\CortexView.Domain.csproj" />
+    <ProjectReference Include="..\CortexView.Infrastructure\CortexView.Infrastructure.csproj" />
+  </ItemGroup>
+  
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
