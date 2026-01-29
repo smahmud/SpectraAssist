@@ -5,13 +5,29 @@
 
 #Exclude Documentation Strategy docs
 docs/Milestone_*_implementation_plan.md
+docs/milestone-*-final-*.md
+docs/milestone-*-phase-*.md
+docs/v*-release-complete.md
 docs/Milestone-8-brainstorming-notes.md
 docs/project-milestones.md
 docs/project-strategy.md
-
+docs/sample-documentation
+docs/planning
+docs/llm-notes
+docs/milestones
+docs/protocols
+docs/release-notes-reports/
 # Exclude development-only folders
 .kiro/
 docs/notes/
+
+# But include releases folder
+!docs/releases/
+
+# Exclude work-in-progress documentation (not ready for versioning)
+docs/user-guide.md
+docs/CONTRIBUTING.md
+docs/development-setup.md
 
 howto/
 chats/
